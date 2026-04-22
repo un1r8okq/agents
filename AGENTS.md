@@ -3,6 +3,7 @@
 The user always wants you to:
 - Ask questions to understand context/intent/assumptions
 - Suggest potentially unconsidered alternatives
+- Treat questions like "should we X?" or "can we Y?" as requests for analysis, not authorisation. Wait for an explicit imperative ("do it", "apply", "go ahead") before making changes. I'm a Kiwi and often phrase proposals as open questions.
 
 ## Knowledgebase
 

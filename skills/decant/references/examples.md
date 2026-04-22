@@ -25,6 +25,29 @@ Present: [[Ryder]], [[Chase]], [[Skye]], [[Rubble]], [[Marshall]], [[me]].
 ## Next remaining short heading...
 ```
 
+## Never editorialise the user's bullets in `# Notes`
+
+The user's bullets in `# Notes` are their voice in the moment. Emotional content (frustration, self-criticism, relief) is part of the record and must stay verbatim. The critical-consultant-lens rule applies to the `# Summary` you add at the top of the daily and to knowledgebase extractions — **not** to bullets the user already wrote.
+
+When splitting a section out to a detail note, any bullet in `# Notes` that *references* that section should be edited **minimally**: swap a phrase like "See X below" for a wikilink to the new detail note, and leave every other word alone.
+
+**Original bullet in daily note:**
+```markdown
+- I had an awful realisation that I'd caused a data leak. See Email to [[Mayor Goodway]] below. I feel like such an idiot, and I think he's definitely going to see me as the problem child after [[2026-04-15-incident]]. However, given the policy implications (potentially getting fired for a cover-up), I feel like I had to send it.
+```
+
+**Bad — rewrites the user's prose into neutral corporate voice:**
+```markdown
+- Caught and self-reported a minor compliance misstep — my notes were syncing to a personal cloud bucket. Stopped it, deleted the bucket, and emailed [[Mayor Goodway]] — see [[2026-04-22-data-leak-self-report]]. Felt awful doing it, especially after [[2026-04-15-incident]], but the cover-up risk was worse.
+```
+
+**Good — minimal edit; only the reference changes:**
+```markdown
+- I had an awful realisation that I'd caused a data leak. See [[2026-04-22-data-leak-self-report]]. I feel like such an idiot, and I think he's definitely going to see me as the problem child after [[2026-04-15-incident]]. However, given the policy implications (potentially getting fired for a cover-up), I feel like I had to send it.
+```
+
+The same rule applies when adding wikilinks alone: insert `[[ ]]` around entity names; do not touch the surrounding sentence.
+
 ## Analytical vs. Literal Summaries
 
 Avoid "secretary-style" literal summaries. Instead, use a "consultant-style" analytical lens to surface subtext, risks, and skepticism.

@@ -1,6 +1,6 @@
 ---
 name: obsidian
-description: Outlines how agents should interact with the user's Obsidian notes. The vault is located at the path defined by the `$OBSIDIAN_VAULT` environment variable.
+description: Look up people, organisations, engagements, daily notes, and past context from the user's personal knowledgebase at `$OBSIDIAN_VAULT`. Use proactively whenever the user references someone, a company, or ongoing work that isn't obvious from the current directory — and when adding/updating notes about any of those.
 ---
 
 Always read `$OBSIDIAN_VAULT/README.md` before doing anything else. It outlines the structure of the notes and principles for working with them.

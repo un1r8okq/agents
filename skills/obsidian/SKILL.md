@@ -5,6 +5,12 @@ description: Look up people, organisations, engagements, daily notes, and past c
 
 Always read `$OBSIDIAN_VAULT/README.md` before doing anything else. It outlines the structure of the notes and principles for working with them.
 
+## Tool usage
+
+Prefer `Read`, `Glob`, and `Grep` over `Bash` — they are allowlisted and don't require permission prompts.
+
+When `Bash` is needed (e.g. `ls`, `find`), make one tool call per command. Do not chain commands with `&&` or `|` — compound commands are not covered by the user's allowlist and will trigger a permission prompt.
+
 ## Setup & Troubleshooting
 If you encounter errors accessing the vault, or if the user asks you to verify the setup, run the setup checker:
 `run_shell_command("~/.agents/skills/obsidian/scripts/check_setup.sh")`

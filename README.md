@@ -17,11 +17,17 @@ ln -s ~/.agents/AGENTS.md ~/.gemini/GEMINI.md
 For each harness, allowlist trusted local directories (e.g. the Obsidian vault at `$OBSIDIAN_VAULT`) so agents can read them without per-call permission prompts. Skip this and you'll get a prompt every `Read`, `Glob`, `Grep`, `ls`, `find`, etc. against the vault.
 
 ### Claude Code
-Add to `~/.claude/settings.json` (substitute your actual vault path — permission strings are literal, env vars don't expand):
+Add to `~/.claude/settings.json` (substitute your actual vault path and user home path — permission strings are literal, env vars don't expand):
 ```json
 {
   "permissions": {
     "allow": [
+      "Read(/home/user/.agents/**)",
+      "Grep(/home/user/.agents/**)",
+      "Glob(/home/user/.agents/**)",
+      "Read(/home/user/.claude/skills/**)",
+      "Grep(/home/user/.claude/skills/**)",
+      "Glob(/home/user/.claude/skills/**)",
       "Read(/absolute/path/to/vault/**)",
       "Glob(/absolute/path/to/vault/**)",
       "Grep(/absolute/path/to/vault/**)",

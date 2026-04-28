@@ -29,6 +29,8 @@ The user may specify a date for the daily note. If no date is provided, use toda
    - **Consultant Lens**: After editing each note, review holistically for structure, clarity, and conciseness. Preserve the critical tone and observations from the daily note; avoid sanitising skepticism or risks into "corporate speak".
 7. Ask follow-up questions one at a time *before* extracting when context is needed to get it right. See [examples](references/examples.md).
 8. Offer to create new notes for topics not yet in the knowledgebase.
-9. Add any action items to `$OBSIDIAN_VAULT/todo.md`, grouped under the relevant heading.
+9. Update `$OBSIDIAN_VAULT/todo.md`:
+   - Remove completed items (`- [x] ...`) and any sub-items nested under them. The todo list is meant to be cleared as items finish — leaving them in clutters the file and dilutes the active list. If the completed item has durable context worth keeping (a decision, a lesson, a reference), move it to the relevant engagement / person / misc note first, then delete. Purely transactional items ("book room", "send email") can be deleted outright.
+   - Add any new action items surfaced in today's note, grouped under the relevant heading.
 10. Add a `# Summary` section at the top of the daily note. **Crucially, apply a critical consultant's lens.** Do not just summarise literally; read between the lines to capture subtext, skepticism, dysfunctions, and risks. If notes imply dubious claims (e.g., massive gains but nothing shipped) or bad practices (e.g., one-shotting huge PRs), call them out explicitly. Its presence signals the note has been decanted.
 11. Suggest improvements to note structure or process only if something significant stands out.

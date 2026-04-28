@@ -51,3 +51,47 @@ Caveats:
 
 ### Other harnesses
 GitHub Copilot CLI, Gemini CLI, and others have different permission models. Configure the equivalent allowlist when setting each up — consult their docs.
+
+## Hooks
+
+Hooks are harness-specific automations that run at lifecycle events (session start, before/after tool calls, etc.). They live in the harness's settings file, but the scripts they invoke live under `~/.agents/scripts/` so they're portable across machines.
+
+### Claude Code: refresh daily note schedule on session start
+
+A `SessionStart` hook in `~/.claude/settings.json` runs `~/.agents/scripts/update-daily-schedule.py`, which:
+
+- Calls `gcalcli agenda --details location --tsv --nodeclined` for today.
+- Drops Working Location all-day events ("Home", "Office", "WFH", etc.).
+- Wikilinks people, orgs, glossary terms, and engagements found in event titles. Matching is case-insensitive and uses each entity's filename plus any `aliases:` list in its frontmatter (e.g. `BB` → `[[Barkingburg|BB]]`, `Ryder` → `[[me|Ryder]]`). Aliases shorter than 2 characters are ignored to prevent pathological matches.
+- Inserts/replaces a `## Schedule` table at the top of `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md` (creating the file from `daily/template.md` if it doesn't exist). Columns: Time, Description, Location — the Location column is omitted when the daily note's frontmatter has `location: home`.
+- Idempotent — safe to run repeatedly.
+- Exits 0 on any failure so a flaky calendar can never block session start.
+
+**Prerequisites**:
+- `gcalcli` installed and authenticated (`gcalcli list` should print your calendars).
+- `$OBSIDIAN_VAULT` exported in the shell that launches Claude Code.
+- `python3` on `PATH` with `PyYAML` available (used to parse vault frontmatter for aliases). Optional — without it, only canonical filenames are linked, no aliases.
+
+**Settings entry**:
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/<user>/.agents/scripts/update-daily-schedule.py",
+            "timeout": 30,
+            "statusMessage": "Refreshing daily note schedule…"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Disable**: remove the hook block from `~/.claude/settings.json`, or run `/hooks` in Claude Code and toggle it off.
+
+**Manual run**: `~/.agents/scripts/update-daily-schedule.py` — useful if a meeting moves and you want a fresh schedule mid-session.

@@ -20,7 +20,7 @@ The user may specify a date for the daily note. If no date is provided, use toda
    - See [examples](references/examples.md) for the "never editorialise" rule.
 5. Rename/relocate images to put them in the same directory of the document that uses them, with the same prefix and a descriptive suffix. E.g. an image `./20260101 Screenshot.png` in `./daily/2026-01-01.md` should be moved to `daily/2026-01-01-org-chart.png`
 6. Extract useful information into the knowledgebase. Map content to vault directories:
-   - **People**: new people → create/update `people/` note; convert plain-text references to wikilinks
+   - **People**: new people → create/update `people/` note; convert plain-text references to wikilinks. When you create a *new* stub, judge whether the person looks high-value (key stakeholder, technical/practice lead, recurring contact, framework critic, named decision-maker) — if so, add a todo to `todo.md` under the relevant engagement heading: `- [ ] Pull LinkedIn background for [[Name]] via the background skill.` Skip the todo for one-off mentions, peripheral attendees, or names dropped without context.
    - **Orgs**: new organisations → create/update `orgs/` note
    - **Engagements**: project updates → add to relevant `engagements/` note
    - **Terms/acronyms**: create/update `glossary/` entry

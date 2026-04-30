@@ -1,0 +1,81 @@
+---
+name: refresh-person
+description: Refresh the `# Summary` and (optional) `# Stated views` blocks on a vault person note (`$OBSIDIAN_VAULT/people/<Name>.md`) so the meeting-prep view stays current with `# My notes`. Use when the user asks to regenerate, refresh, or update a person's summary or stated views, or when prepping for a meeting where the summary feels stale. Use proactively after meaningful edits to `# My notes`. Propose the new content as a diff for confirmation before writing.
+---
+
+Activate the `obsidian` skill first to load vault structure and rules.
+
+## Scope
+
+Edits **only** the `# Summary` and `# Stated views` blocks. `# Stated views` is optional — create it when there's view content worth a section, skip it otherwise. Never touches `# My notes` (user-owned) or `# From LinkedIn` (owned by the `background` skill). Frontmatter is read-only — if `role` or `organisation` look stale, surface it; don't change silently.
+
+## Inputs
+
+- Person's name, or the file path. If missing, ask.
+- Optional: a specific reason to refresh (e.g. prepping for a meeting, just added a note) — affects emphasis.
+
+## Steps
+
+1. Read `$OBSIDIAN_VAULT/people/<Name>.md`. Capture: frontmatter, current `# Summary`, current `# Stated views` (if present), `# My notes`, `# From LinkedIn` (context only).
+2. Draft new content per "What goes where" below.
+3. Show the user a clear before/after diff for both blocks. **Wait for explicit confirmation** ("apply", "go ahead", "yes"). Do not write yet.
+4. On confirmation, replace the affected blocks via `Edit`. Touch nothing else.
+
+## What goes where
+
+The Summary answers **what do I need in my head before working with this person?** Stated views answers **what positions have they expressed that will shape how they react?** Working background usually beats current views in the Summary — views get their own block.
+
+### `# Summary` — narrative, 3-4 dense sentences
+
+**Lead with working background:**
+- Position in the current work landscape (not job title alone)
+- Sponsorship, ownership, who they back
+- Relationships and prior history relevant to live engagements
+- Current dynamics — what they're actively working at the moment, including political ones
+- Verification flags from `# My notes` (claims to confirm before they land in a report)
+
+**Don't put here:**
+- Career chronology — that's `# From LinkedIn`
+- Stated views and framings — those go in `# Stated views`
+- Generic adjectives ("experienced", "passionate")
+- Anything that won't change how the user prepares or behaves in the room
+
+### `# Stated views` — bulleted, optional
+
+Each bullet is a position the person has expressed on record:
+- Technical stances ("X should be owned by Y, not Z")
+- Problem framings ("A is 10% of the problem")
+- Open questions they've raised — include rebuttals from others, attributed
+
+Create the section only when there's at least one substantive view. Don't write filler bullets like "interested in observability". Skip the section entirely on thin profiles.
+
+## Voice
+
+Match the user's existing tone — declarative, direct, no padding. Preserve load-bearing phrasings the user authored (specific quotes, framings) verbatim where still accurate.
+
+**Wikilinks:** apply the vault rule — wikilink every mention of a vault entity (people, orgs, engagements, glossary terms). Use explicit `[[Target|Alias]]` syntax.
+
+## Quick example
+
+For a fictional Skye (anonymised):
+
+```markdown
+# Summary
+Platform product lead in [[Lookout Tower Foundations]] at [[Adventure Bay Co]]; sponsors [[Rocky]]'s tooling team. Prior history with [[Marshall]] (from [[Adventure Bay]]) and [[Chase]]. Currently working political ground for [[FDC]] / [[WDF]] — pulled [[Marshall]] aside at the 2026-04-29 meeting ("we don't want no part of this"). Carries a secondhand 70% delivery-uplift claim about [[PupTech]] worth verifying before it lands in any report.
+
+# Stated views
+- Architectural standards should be contributed to but owned by the architects, not embedded in the framework. Cites the failed "Adventure Bay way" as cautionary.
+- Code generation is "10% of the problem" — review capacity is the real constraint at scale.
+- Reviewing AI-generated code needs a different model *family* — not just Opus vs Sonnet.
+```
+
+Full before/after at [references/example.md](references/example.md).
+
+## Constraints
+
+- **Propose-and-confirm only.** Never silently rewrite either block.
+- **Don't editorialise `# My notes`.** Read it; never change it.
+- **Don't flatten nuance.** If the notes capture competing positions or contested dynamics, keep both threads.
+- **Carry forward verification flags.** If `# My notes` flags a claim as needing verification, the Summary should signal it too.
+- **Stated views is optional.** Skip the section on thin profiles rather than writing filler.
+- **Minimal `Edit` calls.** One per block — or a single combined call when blocks are contiguous.

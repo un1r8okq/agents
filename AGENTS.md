@@ -9,6 +9,8 @@ The user always wants you to:
 
 The user keeps extensive structured notes at the path defined by the `$OBSIDIAN_VAULT` environment variable. Refer to these for context on what the user is working on, or to get more info on people (including the user at `$OBSIDIAN_VAULT/people/me.md`), engagements, and organisations. Suggest updating these notes where you learn something that could be useful to add.
 
+**Vault design docs** at `$OBSIDIAN_VAULT/meta/` are the source of truth for vault structure and conventions. Consult `meta/conventions/<area>.md` before non-trivial edits to vault content or to the skills that operate on the vault — skills should reference the conventions, not restate them.
+
 ## AI Policy — Hard Rules
 
 These apply in every session. Use the `/policy-check` skill for a full compliance review.

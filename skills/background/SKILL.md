@@ -3,7 +3,7 @@ name: background
 description: Add or update a person's professional background in the Obsidian vault from pasted LinkedIn Experience and/or Education text. Use when the user pastes LinkedIn profile data and wants it structured into a people note. Formats for working context (narrative summary, expertise areas) rather than a raw chronology.
 ---
 
-Activate the `obsidian` skill first to load vault structure and rules.
+Vault conventions are defined in the `obsidian` skill body — activate it first if vault context is needed.
 
 ## Inputs
 

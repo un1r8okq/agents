@@ -3,7 +3,7 @@ name: refresh-person
 description: Refresh the `# Summary` and (optional) `# Stated views` blocks on a vault person note (`$OBSIDIAN_VAULT/people/<Name>.md`) so the meeting-prep view stays current with `# My notes`. Use when the user asks to regenerate, refresh, or update a person's summary or stated views, or when prepping for a meeting where the summary feels stale. Use proactively after meaningful edits to `# My notes`. Propose the new content as a diff for confirmation before writing.
 ---
 
-Activate the `obsidian` skill first to load vault structure and rules.
+Vault conventions are defined in the `obsidian` skill body — activate it first.
 
 ## Scope
 

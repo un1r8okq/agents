@@ -13,7 +13,6 @@ Six phases. **Phases 1 and 4 must each be issued as a single parallel tool batch
 
 Issue these reads in a single set of parallel tool calls:
 
-- `$OBSIDIAN_VAULT/meta/conventions/README.md` (convention index; skip if already loaded this session)
 - `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md` (the target daily note)
 - `$OBSIDIAN_VAULT/todo.md`
 - `^description:` grep across each of `people/`, `orgs/`, `engagements/`, `glossary/` (one Grep call per directory)

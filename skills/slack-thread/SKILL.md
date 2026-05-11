@@ -148,7 +148,7 @@ Tell the user:
 
 Prefer `Read`, `Glob`, `Grep`, `Edit`, `Write`. Avoid `Bash` compound commands (`&&`, `|`) — they bypass the user's allowlist.
 
-If unfamiliar with the vault structure, read `$OBSIDIAN_VAULT/README.md` once at the start.
+If unfamiliar with the vault structure, read `$OBSIDIAN_VAULT/README.md` for orientation. Vault conventions are defined in the `obsidian` skill body.
 
 ## Example
 

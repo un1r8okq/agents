@@ -14,13 +14,10 @@ Exit codes:
 """
 from __future__ import annotations
 
-import csv
 import datetime
-import io
 import os
 import re
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -47,34 +44,67 @@ template_path = daily_dir / "template.md"
 
 def fetch_events() -> list[dict]:
     try:
-        result = subprocess.run(
-            [
-                "gcalcli", "agenda",
-                "--details", "location",
-                "--tsv",
-                "--nodeclined",
-                today.isoformat(),
-                (today + datetime.timedelta(days=1)).isoformat(),
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"update-daily-schedule: gcalcli failed; skipping. ({e})", file=sys.stderr)
+        from gcalcli.gcal import GoogleCalendarInterface
+        from dateutil.tz import tzlocal
+    except ImportError as e:
+        print(f"update-daily-schedule: gcalcli import failed; skipping. ({e})", file=sys.stderr)
         return []
 
-    reader = csv.DictReader(io.StringIO(result.stdout), delimiter="\t")
+    try:
+        gcal = GoogleCalendarInterface(
+            refresh_cache=False, use_cache=True,
+            ignore_calendars=[], military=True,
+        )
+    except Exception as e:
+        print(f"update-daily-schedule: gcalcli init failed; skipping. ({e})", file=sys.stderr)
+        return []
+
+    tz = tzlocal()
+    start = datetime.datetime.combine(today, datetime.time.min, tzinfo=tz)
+    end = start + datetime.timedelta(days=1)
+
+    seen_ids: set[str] = set()
     out = []
-    for row in reader:
-        if row.get("start_date") != today.isoformat():
-            continue
-        title = (row.get("title") or "").strip()
-        is_all_day = not (row.get("start_time") or row.get("end_time"))
-        if is_all_day and title.lower() in WORKING_LOCATION_TITLES:
-            continue
-        out.append(row)
+    for cal in gcal.cals:
+        try:
+            for ev in gcal._GetAllEvents(cal, start, end, None):
+                ev_id = ev.get("id", "")
+                if ev_id in seen_ids:
+                    continue
+                seen_ids.add(ev_id)
+
+                attendees = ev.get("attendees", [])
+                self_att = next((a for a in attendees if a.get("self")), None)
+                if self_att and self_att.get("responseStatus") == "declined":
+                    continue
+
+                title = ev.get("summary", "").strip()
+                is_all_day = (
+                    "date" in ev.get("start", {})
+                    and "dateTime" not in ev.get("start", {})
+                )
+                if is_all_day and title.lower() in WORKING_LOCATION_TITLES:
+                    continue
+
+                s = ev.get("s")
+                e_time = ev.get("e")
+
+                out.append({
+                    "start_time": s.strftime("%H:%M") if s and not is_all_day else "",
+                    "end_time": e_time.strftime("%H:%M") if e_time and not is_all_day else "",
+                    "title": title,
+                    "location": ev.get("location", "").strip(),
+                    "attendees": [
+                        a for a in attendees
+                        if not a.get("self")
+                        and not a.get("resource")
+                        and a.get("responseStatus") != "declined"
+                    ],
+                })
+        except Exception as e:
+            print(f"update-daily-schedule: calendar error: {e}", file=sys.stderr)
+
+    out.sort(key=lambda r: (r["start_time"] == "", r["start_time"]))
     return out
 
 
@@ -159,7 +189,83 @@ def cell(text: str) -> str:
     return text.replace("|", r"\|")
 
 
-def render_block(events: list[dict], linkify, include_location: bool) -> str:
+def _attendee_name(att: dict) -> str:
+    name = (att.get("displayName") or "").strip()
+    if name:
+        return name
+    local = att.get("email", "").split("@")[0]
+    cleaned = re.sub(r"\d+$", "", local).replace(".", " ").replace("_", " ")
+    return cleaned.strip().title()
+
+
+def resolve_attendees(
+    att_list: list[dict],
+    entities: list[tuple[str, str]],
+    linkify,
+) -> str:
+    """Deduplicated, wikilinked attendee string.
+
+    Handles people invited via multiple emails (e.g. CP + WW) by:
+    1. Entity-name matching via the wikilinker
+    2. Surname extraction from abbreviated emails (awaters → waters → Ashleigh Waters)
+    3. Filtering the user's own secondary emails (target "me")
+    """
+    surname_lists: dict[str, list[str]] = {}
+    for target, display in entities:
+        words = display.split()
+        if len(words) >= 2:
+            surname_lists.setdefault(words[-1].lower(), []).append(target)
+    surname_map = {
+        s: targets[0]
+        for s, targets in surname_lists.items()
+        if len(set(targets)) == 1
+    }
+
+    seen: set[str] = set()
+    parts: list[str] = []
+
+    for a in att_list:
+        name = _attendee_name(a)
+        linked = linkify(name)
+        target_m = re.match(r"^\[\[([^|\]]+)", linked)
+
+        if target_m:
+            key = target_m.group(1).lower()
+            if key == "me" or key in seen:
+                continue
+            seen.add(key)
+            parts.append(linked)
+            continue
+
+        email = (a.get("email") or "").lower()
+        local = email.split("@")[0]
+        cleaned = re.sub(r"\d+$", "", local)
+        if "." not in cleaned and "_" not in cleaned and len(cleaned) > 2:
+            surname_guess = cleaned[1:]
+            target = surname_map.get(surname_guess)
+            if target:
+                key = target.lower()
+                if key == "me" or key in seen:
+                    continue
+                seen.add(key)
+                parts.append(linkify(target))
+                continue
+
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        parts.append(name)
+
+    return ", ".join(parts)
+
+
+def render_block(
+    events: list[dict],
+    linkify,
+    entities: list[tuple[str, str]],
+    include_location: bool,
+) -> str:
     if not events:
         return "## Schedule\n\n_No events today._\n"
 
@@ -170,12 +276,18 @@ def render_block(events: list[dict], linkify, include_location: bool) -> str:
         title = (ev.get("title") or "").strip()
         location = (ev.get("location") or "").strip()
         time_part = f"{start} - {end}" if start and end else "all-day"
+        att_text = resolve_attendees(ev.get("attendees", []), entities, linkify)
         row = [time_part, cell(linkify(title))]
         if include_location:
             row.append(cell(location))
+        row.append(cell(att_text))
         rows.append(tuple(row))
 
-    headers = ("Time", "Description", "Location") if include_location else ("Time", "Description")
+    headers = ["Time", "Description"]
+    if include_location:
+        headers.append("Location")
+    headers.append("Invited")
+    headers = tuple(headers)
     widths = [len(h) for h in headers]
     for r in rows:
         for i, c in enumerate(r):
@@ -250,7 +362,7 @@ def main() -> int:
     original = daily_path.read_text()
     daily_fm = parse_frontmatter(original)
     include_location = str(daily_fm.get("location", "")).strip().lower() != "home"
-    block = render_block(events, linkify, include_location)
+    block = render_block(events, linkify, entities, include_location)
     updated = upsert_schedule(original, block)
 
     if updated != original:

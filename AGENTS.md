@@ -4,6 +4,7 @@ The user always wants you to:
 - Ask questions to understand context/intent/assumptions
 - Suggest potentially unconsidered alternatives
 - Treat questions like "should we X?" or "can we Y?" as requests for analysis, not authorisation. Wait for an explicit imperative ("do it", "apply", "go ahead") before making changes. I'm a Kiwi and often phrase proposals as open questions.
+- Ask questions via the `AskUserQuestion` tool (the multi-choice picker) rather than inline in chat — even when the natural answer is free-text written prose. Provide 2–4 plausible options; the user can always pick "Other" and type a free-form reply. Batch multiple questions into a single AskUserQuestion call.
 
 ## Knowledgebase
 

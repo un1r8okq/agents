@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: mixin
+name: my-sbx-kit
+displayName: My SBX Kit
+description: A kit that installs the superpowers Skills and does the appropriate symlinks
+commands:
+  startup:
+    - command: ["mkdir", "/home/agent/.claude"]
+    - command: ["ln", "-s", "/c/dev/agents/skills", "/home/agent/.claude/skills"]
+    - command: ["ln", "-s", "/c/dev/agents/AGENTS.md", "/home/agent/.claude/CLAUDE.md"]
+    - command: ["claude", "plugin", "install", "superpowers@claude-plugins-official"]
+    - command: ["sudo", "apt-get", "install", "-y", "python3-icalendar", "python3-yaml"]
+    - command: ["sh", "-c", "[ -f /home/agent/.claude/settings.json ] || echo '{}' > /home/agent/.claude/settings.json"]
+    - command: ["sh", "-c", "jq '.hooks.SessionStart=[{\"hooks\":[{\"type\":\"command\",\"command\":\"/c/dev/agents/scripts/update-daily-schedule.py\",\"timeout\":30,\"statusMessage\":\"Refreshing daily note schedule…\"}]}]' /home/agent/.claude/settings.json > /tmp/s.json && mv /tmp/s.json /home/agent/.claude/settings.json"]

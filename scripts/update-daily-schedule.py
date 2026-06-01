@@ -43,66 +43,73 @@ template_path = daily_dir / "template.md"
 
 
 def fetch_events() -> list[dict]:
+    suffix = os.environ.get("SECRET_ICAL_SUFFIX")
+    if not suffix:
+        print("update-daily-schedule: SECRET_ICAL_SUFFIX not set; skipping.", file=sys.stderr)
+        return []
     try:
-        from gcalcli.gcal import GoogleCalendarInterface
+        import urllib.request
+        import icalendar
         from dateutil.tz import tzlocal
     except ImportError as e:
-        print(f"update-daily-schedule: gcalcli import failed; skipping. ({e})", file=sys.stderr)
+        print(f"update-daily-schedule: import failed; skipping. ({e})", file=sys.stderr)
         return []
 
+    url = f"https://calendar.google.com/calendar/ical/{suffix}"
     try:
-        gcal = GoogleCalendarInterface(
-            refresh_cache=False, use_cache=True,
-            ignore_calendars=[], military=True,
-        )
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            ics = resp.read()
     except Exception as e:
-        print(f"update-daily-schedule: gcalcli init failed; skipping. ({e})", file=sys.stderr)
+        print(f"update-daily-schedule: iCal fetch failed; skipping. ({e})", file=sys.stderr)
         return []
 
     tz = tzlocal()
-    start = datetime.datetime.combine(today, datetime.time.min, tzinfo=tz)
-    end = start + datetime.timedelta(days=1)
+    start_of_day = datetime.datetime.combine(today, datetime.time.min, tzinfo=tz)
+    end_of_day = start_of_day + datetime.timedelta(days=1)
 
-    seen_ids: set[str] = set()
-    out = []
-    for cal in gcal.cals:
-        try:
-            for ev in gcal._GetAllEvents(cal, start, end, None):
-                ev_id = ev.get("id", "")
-                if ev_id in seen_ids:
-                    continue
-                seen_ids.add(ev_id)
+    out: list[dict] = []
+    cal = icalendar.Calendar.from_ical(ics)
+    for ev in cal.walk("VEVENT"):
+        dtstart = ev.get("dtstart").dt
+        is_all_day = not isinstance(dtstart, datetime.datetime)
+        if is_all_day:
+            if dtstart != today:
+                continue
+            s_dt = e_dt = None
+        else:
+            s_dt = dtstart if dtstart.tzinfo else dtstart.replace(tzinfo=tz)
+            s_dt = s_dt.astimezone(tz)
+            if not (start_of_day <= s_dt < end_of_day):
+                continue
+            dtend = ev.get("dtend")
+            e_dt = dtend.dt.astimezone(tz) if dtend and isinstance(dtend.dt, datetime.datetime) else None
 
-                attendees = ev.get("attendees", [])
-                self_att = next((a for a in attendees if a.get("self")), None)
-                if self_att and self_att.get("responseStatus") == "declined":
-                    continue
+        title = str(ev.get("summary", "")).strip()
+        if is_all_day and title.lower() in WORKING_LOCATION_TITLES:
+            continue
 
-                title = ev.get("summary", "").strip()
-                is_all_day = (
-                    "date" in ev.get("start", {})
-                    and "dateTime" not in ev.get("start", {})
-                )
-                if is_all_day and title.lower() in WORKING_LOCATION_TITLES:
-                    continue
+        attendee_raw = ev.get("attendee", [])
+        if not isinstance(attendee_raw, list):
+            attendee_raw = [attendee_raw] if attendee_raw else []
+        attendees = []
+        for a in attendee_raw:
+            params = getattr(a, "params", {}) or {}
+            email = str(a).removeprefix("mailto:")
+            attendees.append({
+                "displayName": str(params.get("CN", "")),
+                "email": email,
+                "self": False,
+                "resource": params.get("CUTYPE") == "RESOURCE",
+                "responseStatus": str(params.get("PARTSTAT", "")).lower(),
+            })
 
-                s = ev.get("s")
-                e_time = ev.get("e")
-
-                out.append({
-                    "start_time": s.strftime("%H:%M") if s and not is_all_day else "",
-                    "end_time": e_time.strftime("%H:%M") if e_time and not is_all_day else "",
-                    "title": title,
-                    "location": ev.get("location", "").strip(),
-                    "attendees": [
-                        a for a in attendees
-                        if not a.get("self")
-                        and not a.get("resource")
-                        and a.get("responseStatus") != "declined"
-                    ],
-                })
-        except Exception as e:
-            print(f"update-daily-schedule: calendar error: {e}", file=sys.stderr)
+        out.append({
+            "start_time": s_dt.strftime("%H:%M") if s_dt else "",
+            "end_time": e_dt.strftime("%H:%M") if e_dt else "",
+            "title": title,
+            "location": str(ev.get("location", "")).strip(),
+            "attendees": attendees,
+        })
 
     out.sort(key=lambda r: (r["start_time"] == "", r["start_time"]))
     return out

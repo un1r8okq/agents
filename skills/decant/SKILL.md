@@ -20,6 +20,13 @@ Issue these reads in a single set of parallel tool calls:
 
 If the daily note already contains a `# Summary`, it has been decanted — confirm with the user before proceeding.
 
+**Partially-decanted days.** No `# Summary` but referenced detail notes / entity edits / todo strikethroughs already exist (common when the transcript skill ran in-session). Proceed, but switch from full extraction to gap-filling:
+
+- **Verify every `See [[...]]` link in the daily note resolves** — in-session captures sometimes reference detail notes that were never created or were merged into another note. Repoint or create as appropriate (ask in Phase 3 if it's a judgement call).
+- **Check for duplicate bullets** — multiple in-day captures of the same event leave near-duplicate bullets with slightly different framings (and sometimes contradictory attributions). Merging or correcting them is a Phase 3 question, not a silent fix.
+- **Diff against the knowledgebase, don't recreate** — check `timeline.md` for a missing dated row, person notes for missing `## Patterns` / `## Engagement events` entries, and `todo.md` for surfaced actions. Write only what's missing.
+- **Out-of-order decants:** if an engagement `context.md`'s *Last refreshed* date is **later** than the target note, don't recompute the full Phase 6 diff — make additive updates only, marked `([[YYYY-MM-DD]], decanted late)`, keep the newer refresh date, and don't demote/remove items the newer refresh already placed.
+
 ### Phase 2: Plan (no tool calls)
 
 Plan the whole run in one pass before issuing any writes:

@@ -18,7 +18,7 @@ d_ago() { date -d "$1 days ago" +%F 2>/dev/null || date -v-"$1"d +%F; }
 run_hook() {
   local vault="$1" cwd="$2"
   printf '{"cwd":"%s"}' "$cwd" \
-    | OBSIDIAN_VAULT="$vault" CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook"
+    | env -u BASH_ENV OBSIDIAN_VAULT="$vault" CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook"
 }
 
 # --- Fixtures ---
@@ -55,7 +55,7 @@ out="$(run_hook "$vault" "/")"
 [ -z "$out" ] && pass "silent when cwd outside allowed roots" || fail "expected silence, got: $out"
 
 # --- Test 3: vault unset -> silent ---
-out="$(printf '{"cwd":"%s"}' "$vault" | OBSIDIAN_VAULT="" CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook")"
+out="$(printf '{"cwd":"%s"}' "$vault" | env -u BASH_ENV OBSIDIAN_VAULT="" CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook")"
 [ -z "$out" ] && pass "silent when OBSIDIAN_VAULT unset" || fail "expected silence, got: $out"
 
 # --- Test 4: nothing to decant -> silent ---

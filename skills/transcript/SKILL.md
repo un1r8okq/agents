@@ -10,6 +10,7 @@ Activate the `obsidian` skill first to load vault conventions.
 The user provides one of:
 1. A **file name** (e.g. `AB CDE1 Marshall PoC Standup - 2026_05_18 09_30 NZST - Notes by Gemini.md`) to a transcript in `/mnt/c/Users/<username>/Downloads/`.
 2. A **file path** — may be an export with a raw name that needs normalising (see step 1).
+3. **Nothing specific** — the user just asks to "process the transcript(s)" or similar. In this case **auto-discover** unprocessed transcripts already sitting in `daily/transcripts/` (see step 1, auto-discovery).
 
 They may also provide:
 - A topic hint for the slug and summary.
@@ -31,6 +32,16 @@ A real transcript has continuous `**Name:**` speaker turns and usually a trailin
 **If it's a summary: STOP immediately.** Do not rename, process, or write anything. Tell the user the file is a summary, not a verbatim transcript — summaries lose the signal the detail note depends on (real quotes, speaker attribution, room dynamics) and sanitise tone and conflict. Ask whether they have the verbatim transcript export (often a separate `… (1).md` sibling, or the Google Doc behind the "Transcript" link), or want you to proceed from the summary anyway. **Wait for an explicit "continue" / "proceed" before any further work.** If they opt to proceed from the summary, add a source-fidelity caveat at the top of the detail note (body is paraphrase not verbatim; attribution partial).
 
 ### 1. Ingest and normalise the transcript
+
+#### Auto-discovery (when no file is named)
+
+If the user did not name a specific file, glob `$OBSIDIAN_VAULT/daily/transcripts/` for files **not** matching the conforming pattern `YYYY-MM-DD-*` (i.e. anything that doesn't start with a `\d{4}-\d{2}-\d{2}-` prefix). These are raw exports dropped in but not yet processed.
+
+- **One match:** treat it as the input file and proceed.
+- **Multiple matches:** list them to the user and process each through the full pipeline (separate detail note per transcript).
+- **No matches:** tell the user there are no unprocessed transcripts in `daily/transcripts/` and ask for a file name/path.
+
+Then normalise each discovered file exactly as a raw export below (resolve date, derive slug, rename in place).
 
 **If the file is already in `daily/transcripts/` with a conforming name:** read it. Extract the date from the filename.
 

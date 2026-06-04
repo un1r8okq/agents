@@ -31,7 +31,8 @@ vault="${OBSIDIAN_VAULT:-}"
 
 # --- Self-locate the skills-repo root (no hardcoded paths) ---
 hooks_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"   # .../skills/decant/hooks
-skills_repo="$(cd "$hooks_dir/../../.." && pwd -P)"            # repo root containing skills/
+skills_repo="$(cd "$hooks_dir/../../.." && pwd -P)"            # 3 levels up from hooks/ -> repo root
+[ -n "$skills_repo" ] || exit 0
 
 # --- Normalise cwd and vault for prefix matching ---
 norm() { (cd "$1" 2>/dev/null && pwd -P) || printf '%s' "$1"; }

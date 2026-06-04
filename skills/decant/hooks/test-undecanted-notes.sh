@@ -50,12 +50,17 @@ case "$out" in *"$TODAY"*) fail "should NOT list today $TODAY";; *) pass "exclud
 case "$out" in *template*) fail "should NOT list template.md";; *) pass "excludes template.md";; esac
 case "$out" in *"/decant"*) pass "includes offer-to-decant instruction";; *) fail "missing offer instruction";; esac
 
+# --- Test 1b: cwd inside the skills repo (not the vault) -> active ---
+# $here is .../skills/decant/hooks, which is under the hook's self-located repo root.
+out="$(run_hook "$vault" "$here")"
+case "$out" in *"$IN1"*) pass "fires when cwd is inside the skills repo";; *) fail "expected nudge from skills-repo cwd, got: $out";; esac
+
 # --- Test 2: cwd outside vault and skills repo -> silent ---
 out="$(run_hook "$vault" "/")"
 [ -z "$out" ] && pass "silent when cwd outside allowed roots" || fail "expected silence, got: $out"
 
 # --- Test 3: vault unset -> silent ---
-out="$(printf '{"cwd":"%s"}' "$vault" | env -u BASH_ENV OBSIDIAN_VAULT="" CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook")"
+out="$(printf '{"cwd":"%s"}' "$vault" | env -u BASH_ENV -u OBSIDIAN_VAULT CLAUDE_ENV_FILE="/nonexistent-$$" bash "$hook")"
 [ -z "$out" ] && pass "silent when OBSIDIAN_VAULT unset" || fail "expected silence, got: $out"
 
 # --- Test 4: nothing to decant -> silent ---

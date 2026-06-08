@@ -370,3 +370,49 @@ def test_hook_reports_uppercase_keys(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "Non-lowercase frontmatter keys: people/Drift.md (Role)" in r.stdout
+
+
+def test_find_wikilinks_in_description_flags_wikilink(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Linked.md").write_text('---\ndescription: "Lead at [[ClearPoint]]"\n---\n# body\n')
+    assert (tmp_path / "people" / "Linked.md") in vv.find_wikilinks_in_description(tmp_path)
+
+
+def test_find_wikilinks_in_description_ignores_plain_and_body_links(tmp_path):
+    (tmp_path / "people").mkdir()
+    # plain description; the [[ClearPoint]] is in the BODY, which must NOT be flagged
+    (tmp_path / "people" / "Plain.md").write_text("---\ndescription: Lead at ClearPoint\n---\n# body [[ClearPoint]]\n")
+    assert vv.find_wikilinks_in_description(tmp_path) == []
+
+
+def test_find_wikilinks_in_description_ignores_no_description(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoFm.md").write_text("# just body, no frontmatter\n")
+    assert vv.find_wikilinks_in_description(tmp_path) == []
+
+
+def test_format_report_includes_desc_links(tmp_path):
+    (tmp_path / "people").mkdir()
+    linked = tmp_path / "people" / "Linked.md"
+    linked.write_text('---\ndescription: "Lead at [[ClearPoint]]"\n---\n')
+    report = vv.format_report([], [], tmp_path, desc_links=[linked])
+    assert "Wikilink in description: people/Linked.md" in report
+
+
+def test_format_report_empty_with_desc_links_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, desc_links=[]) == ""
+
+
+def test_hook_reports_wikilink_in_description(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Linked.md").write_text('---\ndescription: "Lead at [[ClearPoint]]"\n---\n')
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Wikilink in description: people/Linked.md" in r.stdout
+
+
+def test_find_wikilinks_in_description_ignores_entity_field_wikilinks(tmp_path):
+    (tmp_path / "people").mkdir()
+    # organisation: legitimately keeps its wikilink; description is plain -> NOT flagged
+    (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[ClearPoint]]"\ndescription: Lead engineer\n---\n')
+    assert vv.find_wikilinks_in_description(tmp_path) == []

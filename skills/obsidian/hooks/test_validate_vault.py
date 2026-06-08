@@ -370,3 +370,22 @@ def test_hook_reports_uppercase_keys(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "Non-lowercase frontmatter keys: people/Drift.md (Role)" in r.stdout
+
+
+def test_find_wikilinks_in_description_flags_wikilink(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Linked.md").write_text('---\ndescription: "Lead at [[ClearPoint]]"\n---\n# body\n')
+    assert (tmp_path / "people" / "Linked.md") in vv.find_wikilinks_in_description(tmp_path)
+
+
+def test_find_wikilinks_in_description_ignores_plain_and_body_links(tmp_path):
+    (tmp_path / "people").mkdir()
+    # plain description; the [[ClearPoint]] is in the BODY, which must NOT be flagged
+    (tmp_path / "people" / "Plain.md").write_text("---\ndescription: Lead at ClearPoint\n---\n# body [[ClearPoint]]\n")
+    assert vv.find_wikilinks_in_description(tmp_path) == []
+
+
+def test_find_wikilinks_in_description_ignores_no_description(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoFm.md").write_text("# just body, no frontmatter\n")
+    assert vv.find_wikilinks_in_description(tmp_path) == []

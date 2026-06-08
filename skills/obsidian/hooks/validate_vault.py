@@ -117,6 +117,15 @@ def find_uppercase_frontmatter_keys(vault: Path) -> list[tuple[Path, list[str]]]
     return found
 
 
+def find_wikilinks_in_description(vault: Path) -> list[Path]:
+    """Return notes whose `description:` frontmatter contains a [[wikilink]] (must be plain prose)."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        if "[[" in _read_frontmatter(path).get("description", ""):
+            found.append(path)
+    return found
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

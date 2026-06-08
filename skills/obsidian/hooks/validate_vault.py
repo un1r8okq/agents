@@ -17,9 +17,11 @@ from pathlib import Path
 
 
 def _iter_notes(vault: Path) -> Iterator[Path]:
-    """Yield *.md files under vault, skipping dot-directories (.obsidian, .trash, .claude)."""
+    """Yield *.md content files under vault, skipping dot-directories and README.md (conventional per-directory files, not wikilink targets)."""
     for path in vault.rglob("*.md"):
         if any(part.startswith(".") for part in path.relative_to(vault).parts):
+            continue
+        if path.name.lower() == "readme.md":
             continue
         yield path
 
@@ -118,7 +120,7 @@ def format_report(
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
         rel = p.relative_to(vault)
-        lines.append(f"- Empty note (0 bytes): {rel} — an empty note is a dead wikilink target.")
+        lines.append(f"- Empty note (no content): {rel} — a blank note is a dead wikilink target.")
     for name, paths in dups:
         dirs = ", ".join(sorted(str(p.relative_to(vault).parent) for p in paths))
         lines.append(

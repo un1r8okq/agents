@@ -65,6 +65,14 @@ def test_find_duplicate_basenames_ignores_dotdirs(tmp_path):
     assert vv.find_duplicate_basenames(vault) == []
 
 
+def test_find_duplicate_basenames_ignores_readme(tmp_path):
+    vault = _vault(tmp_path)
+    (vault / "meta").mkdir()
+    (vault / "README.md").write_text("root readme\n")
+    (vault / "meta" / "README.md").write_text("meta readme\n")
+    assert vv.find_duplicate_basenames(vault) == []
+
+
 def test_read_cwd_parses_json(tmp_path):
     assert vv.read_cwd('{"cwd": "/c/notes"}') == "/c/notes"
 
@@ -86,6 +94,7 @@ def test_in_scope_accepts_inside_vault_rejects_outside(tmp_path):
     assert vv.in_scope(str(vault / "daily"), vault, repo) is True  # inside vault
     assert vv.in_scope(str(repo / "skills"), vault, repo) is True  # inside skills repo
     assert vv.in_scope(str(other), vault, repo) is False           # outside both
+    assert vv.in_scope(str(repo), vault, repo) is True             # skills repo root
 
 
 def test_resolve_vault_from_env(tmp_path, monkeypatch):
@@ -124,6 +133,8 @@ def test_format_report_lists_findings(tmp_path):
     assert "people/Empty.md" in report
     assert 'Duplicate basename "Dup.md"' in report
     assert "do NOT auto-edit" in report
+    assert "no content" in report
+    assert "0 bytes" not in report
 
 
 def test_read_cwd_falls_back_when_json_is_not_object(monkeypatch):
@@ -176,6 +187,7 @@ def test_hook_exit_zero_with_fallback_cwd_when_stdin_malformed(tmp_path):
     # malformed stdin -> read_cwd falls back to os.getcwd(); still exits 0
     r = _run("not json at all", {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
+    assert r.stdout == ""
 
 
 def test_hook_exit_zero_when_vault_unset(tmp_path):

@@ -242,3 +242,31 @@ def test_read_frontmatter_unclosed_fence_returns_empty(tmp_path):
     p = tmp_path / "n.md"
     p.write_text("---\ntitle: Foo\ndescription: this is body text, not frontmatter\nmore body\n")
     assert vv._read_frontmatter(p) == {}
+
+
+def test_find_missing_description_flags_entity_without_it(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoDesc.md").write_text("---\nrole: x\n---\n# body\n")
+    (tmp_path / "people" / "HasDesc.md").write_text("---\ndescription: a real person\n---\n# body\n")
+    found = vv.find_missing_description(tmp_path)
+    assert (tmp_path / "people" / "NoDesc.md") in found
+    assert (tmp_path / "people" / "HasDesc.md") not in found
+
+
+def test_find_missing_description_excludes_daily_and_transcripts(tmp_path):
+    (tmp_path / "daily").mkdir()
+    (tmp_path / "daily" / "detail").mkdir()
+    (tmp_path / "daily" / "transcripts").mkdir()
+    (tmp_path / "daily" / "2026-01-01.md").write_text("# Notes\n")
+    (tmp_path / "daily" / "transcripts" / "t.md").write_text("raw transcript\n")
+    (tmp_path / "daily" / "detail" / "2026-01-01-x.md").write_text("notes\n")
+    found = vv.find_missing_description(tmp_path)
+    assert (tmp_path / "daily" / "2026-01-01.md") not in found
+    assert (tmp_path / "daily" / "transcripts" / "t.md") not in found
+    assert (tmp_path / "daily" / "detail" / "2026-01-01-x.md") in found
+
+
+def test_find_missing_description_uppercase_counts_as_missing(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Upper.md").write_text("---\nDescription: capitalized key\n---\n")
+    assert (tmp_path / "people" / "Upper.md") in vv.find_missing_description(tmp_path)

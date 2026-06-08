@@ -96,6 +96,17 @@ def find_duplicate_basenames(vault: Path) -> list[tuple[str, list[Path]]]:
     return dups
 
 
+def find_missing_description(vault: Path) -> list[Path]:
+    """Return entity notes (per _requires_description) lacking a non-empty `description:`."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        if not _requires_description(path.relative_to(vault)):
+            continue
+        if not _read_frontmatter(path).get("description", "").strip():
+            found.append(path)
+    return found
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

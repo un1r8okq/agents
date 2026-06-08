@@ -206,3 +206,39 @@ def test_main_returns_zero_when_a_check_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(vv, "find_empty_notes", _boom)
     monkeypatch.setattr("sys.stdin", io.StringIO(f'{{"cwd": "{tmp_path}"}}'))
     assert vv.main() == 0
+
+
+def test_read_frontmatter_parses_top_level_keys(tmp_path):
+    p = tmp_path / "n.md"
+    p.write_text('---\nrole: Lead Engineer\norganisation: "[[ClearPoint]]"\naliases:\n  - Will\n  - Will V\n---\n# Body\n')
+    fm = vv._read_frontmatter(p)
+    assert fm["role"] == "Lead Engineer"
+    assert fm["organisation"] == '"[[ClearPoint]]"'
+    assert fm["aliases"] == ""        # key present; its list items are not parsed
+    assert "Will" not in fm           # list items never become keys
+
+
+def test_read_frontmatter_empty_when_no_block(tmp_path):
+    p = tmp_path / "n.md"
+    p.write_text("# Just a heading\nbody\n")
+    assert vv._read_frontmatter(p) == {}
+
+
+def test_requires_description_by_directory():
+    from pathlib import Path as P
+    assert vv._requires_description(P("people/Foo.md")) is True
+    assert vv._requires_description(P("orgs/Bar.md")) is True
+    assert vv._requires_description(P("glossary/x.md")) is True
+    assert vv._requires_description(P("misc/y.md")) is True
+    assert vv._requires_description(P("engagements/DSO2/context.md")) is True
+    assert vv._requires_description(P("daily/detail/2026-01-01-x.md")) is True
+    assert vv._requires_description(P("daily/2026-01-01.md")) is False
+    assert vv._requires_description(P("daily/transcripts/x.md")) is False
+    assert vv._requires_description(P("meta/architecture.md")) is False
+    assert vv._requires_description(P("README.md")) is False
+
+
+def test_read_frontmatter_unclosed_fence_returns_empty(tmp_path):
+    p = tmp_path / "n.md"
+    p.write_text("---\ntitle: Foo\ndescription: this is body text, not frontmatter\nmore body\n")
+    assert vv._read_frontmatter(p) == {}

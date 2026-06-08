@@ -26,6 +26,50 @@ def _iter_notes(vault: Path) -> Iterator[Path]:
         yield path
 
 
+DESCRIPTION_REQUIRED_DIRS = ("people", "orgs", "glossary", "misc", "engagements")
+# SKILL.md "Required fields per directory" is the source of truth for the above;
+# daily/detail/ also requires description: (handled in _requires_description).
+# The drift-guard test (test_description_required_dirs_match_skill_md) fails loudly
+# if these diverge from that table.
+
+
+def _read_frontmatter(path: Path) -> dict[str, str]:
+    """Parse the leading ---/--- block into top-level key:value pairs.
+
+    Returns {} when there is no opening `---` fence, or when the block is never closed. Only top-level `key: value`
+    lines are captured; indented list items (e.g. under `aliases:`) and nested
+    content don't match the key pattern and are ignored. No YAML dependency.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {}
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines) and lines[i].strip() == "":
+        i += 1
+    if i >= len(lines) or lines[i].strip() != "---":
+        return {}
+    fm: dict[str, str] = {}
+    for line in lines[i + 1:]:
+        if line.strip() == "---":
+            return fm          # closed properly
+        m = re.match(r"([A-Za-z0-9_-]+):(.*)", line)
+        if m:
+            fm[m.group(1)] = m.group(2).strip()
+    return {}                  # no closing fence -> treat as no frontmatter
+
+
+def _requires_description(rel: Path) -> bool:
+    """True if a note at this vault-relative path must carry a `description:`."""
+    parts = rel.parts
+    if parts and parts[0] in DESCRIPTION_REQUIRED_DIRS:
+        return True
+    if parts[:2] == ("daily", "detail"):
+        return True
+    return False
+
+
 def find_empty_notes(vault: Path) -> list[Path]:
     """Return .md files whose content is empty or whitespace-only."""
     found = []

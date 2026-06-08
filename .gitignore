@@ -1,4 +1,5 @@
 # These skills contains company IP and shouldn't be shared
+.claude/worktrees
 policy-check
 obs
 **/__pycache__/

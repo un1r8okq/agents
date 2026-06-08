@@ -7,7 +7,7 @@ The user may specify a date for the daily note. If no date is provided, use toda
 
 ## Procedure
 
-Seven phases. **Phases 1 and 4 must each be issued as a single parallel tool batch** — sequential execution there is the main reason this skill is slow. Phase 5's daily-note edits are deliberately sequential for safer recovery; its `todo.md` write runs in parallel with the first daily-note Edit. Phase 6 refreshes engagement `context.md` files; Phase 7 closes the loop with a focus/concerns question.
+Eight phases. **Phases 1 and 4 must each be issued as a single parallel tool batch** — sequential execution there is the main reason this skill is slow. Phase 5's daily-note edits are deliberately sequential for safer recovery. Phase 6 refreshes engagement `context.md` files; Phase 7 closes the loop — a focus/concerns question **only when priorities genuinely compete**, plus approval of any proposed `todo.md` additions. **Never add a todo silently — additions are always proposed for the user to pick from.**
 
 ### Phase 1: Discover (parallel batch)
 
@@ -35,7 +35,7 @@ Plan the whole run in one pass before issuing any writes:
 2. **Sections to split out.** Extract any `##` subsection in `# Notes` to `daily/detail/YYYY-MM-DD-topic-name.md` if EITHER (a) it exceeds ~20 lines, OR (b) it captures an event involving **3+ vault people** — multi-person events otherwise propagate the same inline content across multiple person notes at entity-edit time. Plan the verbatim detail content and the bullet that will replace it (preserve existing reference bullets verbatim; only add a new analytical bullet where none exists). Detail notes need `description:` frontmatter and a `Present:` wikilinked attendee list.
 3. **Image renames.** Match images in `daily/` against the daily note (e.g. `./daily/20260101 Screenshot.png` referenced by `2026-01-01.md` → `daily/2026-01-01-org-chart.png`).
 4. **Extractions** per the map below.
-5. **Todo updates.** Items to remove (completed; if durable context, move to the relevant note first) or add (new actions surfaced).
+5. **Todo updates.** Plan items to *remove* (completed; if durable context, move to the relevant note first) — removals are applied automatically since they reduce bloat. For *additions* (new actions surfaced), **do not plan to write them directly** — collect them as a proposal list for the user to approve in Phase 7. Never add a todo silently.
 6. **Follow-up questions** for ambiguities or judgement calls that block extraction.
 
 ### Phase 3: Resolve ambiguity (batched)
@@ -47,7 +47,7 @@ If you have follow-up questions, batch them into a single AskUserQuestion. **Don
 Issue as one parallel batch:
 
 - **Detail notes.** Create each `daily/detail/YYYY-MM-DD-*.md` with verbatim content. **Never summarise or reformat the body.** Required frontmatter: `description:`.
-- **New entity stubs** (people / orgs / glossary entries). Required frontmatter per `meta/conventions/frontmatter.md`. For new *people* stubs, judge whether high-value (key stakeholder, technical/practice lead, recurring contact, framework critic, named decision-maker) — if so, add to the `todo.md` plan: `- [ ] Pull LinkedIn background for [[Name]] via the background skill.` Skip for one-off mentions.
+- **New entity stubs** (people / orgs / glossary entries). Required frontmatter per `meta/conventions/frontmatter.md`. For new *people* stubs, judge whether high-value (key stakeholder, technical/practice lead, recurring contact, framework critic, named decision-maker) — if so, **add it to the Phase 7 todo-proposal list** (don't write it now): `- [ ] Pull LinkedIn background for [[Name]] via the background skill.` Skip for one-off mentions.
 - **Existing entity edits** (engagement / org / person notes). Each is a different file → fully parallel. Cite source: `Source: [[YYYY-MM-DD]]`.
   - **Person notes follow the durable-portrait shape** (canonical: `meta/conventions/people-notes.md`). When updating an existing person note for a session/meeting:
     - Add **pattern-level** observations under `## Patterns` — one short rule per bullet (`**<title>.** <one-sentence observation>. Source: [[date]], [[date]].`). If a matching pattern already exists, **extend its source line** with the new date rather than duplicating.
@@ -59,9 +59,9 @@ Issue as one parallel batch:
 
 The daily note and `todo.md` are **excluded** from Phase 4 — handled in Phase 5. Engagement `context.md` refresh is **excluded** — handled in Phase 6.
 
-### Phase 5: Daily note edits + todo
+### Phase 5: Daily note edits
 
-Issue these sequentially against the daily note — each Edit operates on the file as left by the previous one. Run the `todo.md` write **in parallel with the first daily-note Edit** (different files):
+Issue these sequentially against the daily note — each Edit operates on the file as left by the previous one. (`todo.md` is **not** touched here — it's handled in Phase 7, after additions are approved. See Phase 2.5.)
 
 1. **Section removals.** For each `##` subsection planned in Phase 2.2: Edit the daily note to replace the heading + content with the planned bullet. Preserve existing reference bullets verbatim; only insert a new analytical bullet where none exists.
 2. **Wikilink insertions.** Edit to add `[[ ]]` around entity names — **never reword the user's prose**, only insert link syntax. Use `replace_all=true` only when the entity name is unambiguous (no substring overlap with other names); otherwise per-occurrence Edits.
@@ -84,20 +84,22 @@ For each engagement directory touched by today's daily note (i.e. any engagement
 
 If context.md doesn't exist yet for an engagement (i.e. the engagement is still in single-file shape at `engagements/<Engagement>.md`), skip context.md refresh — flag in Phase 7 instead as a candidate for directory promotion.
 
-### Phase 7: Confirm focus and concerns (AskUserQuestion)
+### Phase 7: Confirm focus + approve todo additions (AskUserQuestion)
 
-Close the loop with the user via `AskUserQuestion` (the multi-choice picker — per user preference in `~/.agents/AGENTS.md`, always use AskUserQuestion for questions even when the natural answer is free-text).
+Close the loop via a **single** `AskUserQuestion` call (the multi-choice picker — per user preference in `~/.agents/AGENTS.md`, always use AskUserQuestion even when the natural answer is free-text). **Batch every applicable question into one call** — don't ask sequentially across turns. Both question types below are conditional: if neither a focus question nor a todo-approval question applies, **skip Phase 7's question entirely** and go to Phase 8.
 
-Ask **one batched question per engagement touched**, with options drawn from what you computed in Phase 6:
+**Focus question — ask only when it would produce signal the decant couldn't compute itself.** Per engagement touched, ask it when *either* (a) two or more priorities/risks genuinely compete and Phase 6 couldn't tell which you'd rank top, *or* (b) your likely focus plausibly diverges from the computed pin. **Skip it when Phase 6 already produced one clear, unchanged top priority** — re-confirming the model's own pin is make-work (and trains rubber-stamping); just state that pin in the Phase 8 report and move on. When you do ask:
+- *"For [[Engagement]], what's your top focus / biggest concern this week?"* — frame around the **current** week, not the note's date (matters for late decants).
+- 2–4 options, each a short, specific framing of a *competing* priority or concern from your Phase 6 priorities + risks. User picks one, or "Other" for free-form.
 
-- **Question:** *"For [[Engagement]], what's your top focus / biggest concern for the rest of this week?"*
-- **Options (2–4, drawn from your Phase 6 priorities + risks)**: each option a short, specific framing of a candidate priority or concern. User picks one, or selects "Other" to type a free-form reply.
+**Todo-approval question — include it whenever Phase 2.5 / Phase 4 surfaced any additions** (`multiSelect: true`):
+- *"Which of these surfaced actions should I add to todo.md? (Pick none if you don't want any.)"*
+- One option per proposed todo, phrased concisely. The user selects which to keep. **Never write a todo that wasn't selected.**
+- AskUserQuestion caps a question at 4 options. If more than 4 additions surface, put the top 4 in the picker and list the rest in the Phase 8 report as optional adds the user can request.
 
-Use the user's answer to:
-- **Pin / elevate** the chosen item to the top of `## This week's priorities` (or `## Active concerns / risks`) in `context.md`.
-- **Surface a follow-up question** if the answer reveals something not yet captured (e.g. a new risk you didn't list).
-
-If only one engagement was touched, ask the one question. If multiple were touched, batch into one `AskUserQuestion` call with multiple sub-questions (one per engagement). Don't ask sequentially across turns.
+After the answers:
+- **Pin / elevate** (only if you asked a focus question) the chosen item to the top of `## This week's priorities` (or `## Active concerns / risks`) in `context.md`. Surface a follow-up question if the answer reveals something not yet captured. If you *skipped* the focus question, leave the Phase 6 pin as-is.
+- **Write `todo.md` once:** apply the planned *removals* and append **only the user-approved additions** under the right engagement / `## Personal / Internal` heading, each with a `Source: [[YYYY-MM-DD]]` link. If the user picked no additions, only the removals are applied.
 
 ### Phase 8: Report and offer
 

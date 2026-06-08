@@ -40,3 +40,15 @@ A `SessionStart` hook runs `/c/dev/agents/scripts/update-daily-schedule.py`, whi
 **Manual run**: `/c/dev/agents/scripts/update-daily-schedule.py` — useful if a meeting moves and you want a fresh schedule mid-session.
 
 **Disable**: edit `/home/agent/.claude/settings.json` to remove the hook block, or run `/hooks` in Claude Code and toggle it off.
+
+### Vault-validate hook (SessionStart)
+
+`skills/obsidian/hooks/validate_vault.py` runs at session start and nudges about
+vault integrity defects (empty notes, duplicate basenames). Report-only — it never
+edits the vault, and always exits 0. Supersedes the old vault-root `validate.py`.
+
+Install: add to the `SessionStart` hooks in `~/.claude/settings.json`:
+
+    { "type": "command", "command": "$HOME/.claude/skills/obsidian/hooks/validate_vault.py" }
+
+Run the tests with `python3 -m pytest skills/obsidian/hooks/test_validate_vault.py`.

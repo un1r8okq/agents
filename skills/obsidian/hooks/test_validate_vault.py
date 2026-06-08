@@ -270,3 +270,17 @@ def test_find_missing_description_uppercase_counts_as_missing(tmp_path):
     (tmp_path / "people").mkdir()
     (tmp_path / "people" / "Upper.md").write_text("---\nDescription: capitalized key\n---\n")
     assert (tmp_path / "people" / "Upper.md") in vv.find_missing_description(tmp_path)
+
+
+def test_find_uppercase_frontmatter_keys_flags_capitalized(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Drift.md").write_text('---\nRole: x\nOrganisation: "[[Y]]"\ndescription: ok\n---\n')
+    found = dict(vv.find_uppercase_frontmatter_keys(tmp_path))
+    assert (tmp_path / "people" / "Drift.md") in found
+    assert set(found[tmp_path / "people" / "Drift.md"]) == {"Role", "Organisation"}
+
+
+def test_find_uppercase_frontmatter_keys_ignores_lowercase_and_aliases(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Good.md").write_text('---\nrole: x\ndescription: y\naliases:\n  - Will\n---\n')
+    assert vv.find_uppercase_frontmatter_keys(tmp_path) == []

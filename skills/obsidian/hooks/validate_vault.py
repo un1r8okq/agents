@@ -107,6 +107,16 @@ def find_missing_description(vault: Path) -> list[Path]:
     return found
 
 
+def find_uppercase_frontmatter_keys(vault: Path) -> list[tuple[Path, list[str]]]:
+    """Return (path, bad_keys) for notes whose frontmatter has non-lowercase keys."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        bad = [k for k in _read_frontmatter(path) if k != k.lower()]
+        if bad:
+            found.append((path, bad))
+    return found
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

@@ -192,9 +192,10 @@ def format_report(
     *,
     missing_desc: list[Path] = (),
     bad_keys: list[tuple[Path, list[str]]] = (),
+    desc_links: list[Path] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys):
+    if not (empty or dups or missing_desc or bad_keys or desc_links):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -213,6 +214,9 @@ def format_report(
         lines.append(
             f"- Non-lowercase frontmatter keys: {rel} ({', '.join(sorted(keys))}) — keys must be lowercase."
         )
+    for p in desc_links:
+        rel = p.relative_to(vault)
+        lines.append(f"- Wikilink in description: {rel} — descriptions must be plain text (no [[...]]).")
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
 
@@ -235,6 +239,7 @@ def main() -> int:
             vault,
             missing_desc=find_missing_description(vault),
             bad_keys=find_uppercase_frontmatter_keys(vault),
+            desc_links=find_wikilinks_in_description(vault),
         )
         if report:
             print(report)

@@ -409,3 +409,10 @@ def test_hook_reports_wikilink_in_description(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "Wikilink in description: people/Linked.md" in r.stdout
+
+
+def test_find_wikilinks_in_description_ignores_entity_field_wikilinks(tmp_path):
+    (tmp_path / "people").mkdir()
+    # organisation: legitimately keeps its wikilink; description is plain -> NOT flagged
+    (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[ClearPoint]]"\ndescription: Lead engineer\n---\n')
+    assert vv.find_wikilinks_in_description(tmp_path) == []

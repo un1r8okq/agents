@@ -36,3 +36,28 @@ def test_find_empty_notes_ignores_nonempty_and_dotdirs(tmp_path):
     found = vv.find_empty_notes(vault)
     assert found == []
     assert vault / ".obsidian" / "Empty In Dotdir.md" not in found
+
+
+def test_find_duplicate_basenames_flags_collision(tmp_path):
+    vault = _vault(tmp_path)
+    (vault / "engagements").mkdir()
+    (vault / "engagements" / "Dup.md").write_text("stub\n")
+    (vault / "misc" / "Dup.md").write_text("rich\n")
+    dups = vv.find_duplicate_basenames(vault)
+    names = [name for name, _ in dups]
+    assert names == ["Dup.md"]
+    paths = dict(dups)["Dup.md"]
+    assert (vault / "engagements" / "Dup.md") in paths
+    assert (vault / "misc" / "Dup.md") in paths
+
+
+def test_find_duplicate_basenames_ignores_unique(tmp_path):
+    vault = _vault(tmp_path)  # _vault basenames ("Real Person.md", "A Note.md") are all unique
+    assert vv.find_duplicate_basenames(vault) == []
+
+
+def test_find_duplicate_basenames_ignores_dotdirs(tmp_path):
+    vault = _vault(tmp_path)
+    (vault / ".obsidian").mkdir()
+    (vault / ".obsidian" / "A Note.md").write_text("config copy\n")  # collides by name but is in a dot-dir
+    assert vv.find_duplicate_basenames(vault) == []

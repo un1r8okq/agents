@@ -35,3 +35,16 @@ def find_empty_notes(vault: Path) -> list[Path]:
         if not text.strip():
             found.append(path)
     return found
+
+
+def find_duplicate_basenames(vault: Path) -> list[tuple[str, list[Path]]]:
+    """Return (basename, paths) for .md basenames appearing in 2+ locations."""
+    by_name: dict[str, list[Path]] = defaultdict(list)
+    for path in _iter_notes(vault):
+        by_name[path.name].append(path)
+    dups = []
+    for name in sorted(by_name):
+        paths = sorted(by_name[name])
+        if len(paths) > 1:
+            dups.append((name, paths))
+    return dups

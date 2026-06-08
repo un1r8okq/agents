@@ -46,7 +46,7 @@ If you have follow-up questions, batch them into a single AskUserQuestion. **Don
 
 Issue as one parallel batch:
 
-- **Detail notes.** Create each `daily/detail/YYYY-MM-DD-*.md` with verbatim content. **Never summarise or reformat the body.** Required frontmatter: `description:`.
+- **Detail notes.** Create each `daily/detail/YYYY-MM-DD-*.md` with verbatim content. **Never summarise or reformat the body.** Required frontmatter: `description:` (plain text — no `[[wikilinks]]`).
 - **New entity stubs** (people / orgs / glossary entries). Required frontmatter per `meta/conventions/frontmatter.md`. For new *people* stubs, judge whether high-value (key stakeholder, technical/practice lead, recurring contact, framework critic, named decision-maker) — if so, **add it to the Phase 7 todo-proposal list** (don't write it now): `- [ ] Pull LinkedIn background for [[Name]] via the background skill.` Skip for one-off mentions.
 - **Existing entity edits** (engagement / org / person notes). Each is a different file → fully parallel. Cite source: `Source: [[YYYY-MM-DD]]`.
   - **Person notes follow the durable-portrait shape** (canonical: `meta/conventions/people-notes.md`). When updating an existing person note for a session/meeting:

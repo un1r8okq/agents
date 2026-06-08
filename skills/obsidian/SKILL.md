@@ -98,6 +98,7 @@ Apply the relevant section before any non-trivial write. These are the authorita
 **Description shape:** specific, not generic. Lead with role + org + the load-bearing context distinguishing this entity from siblings.
 - ✅ `"Engineering Manager in Rescue Ops, 7 years at ABC. Led AI PoC 2 in the dispatch application."`
 - ❌ `"An engineer at Adventure Bay Council."` — too generic to surface in a grep survey.
+- **Plain text — no wikilinks.** Spell entity names out; never put `[[wikilinks]]` in `description:`. A wikilink in a free-text frontmatter value creates no Obsidian graph edge, adds noise to the `^description:` survey, and duplicates the body's linking. (Entity-relationship fields `organisation:`/`client:` keep wikilink syntax — see "Wikilinks in frontmatter" above.)
 
 ### Wikilinks
 

@@ -174,7 +174,7 @@ Format:
 
 ```markdown
 ---
-description: "<specific ~15-word description>"
+description: "<specific ~15-word description — plain text, no [[wikilinks]]>"
 ---
 Full transcript: [[YYYY-MM-DD-<slug>-transcript]]
 

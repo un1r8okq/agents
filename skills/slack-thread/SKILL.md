@@ -93,7 +93,7 @@ Format:
 
 ```markdown
 ---
-description: "<~12-word description, mirrors H1>"
+description: "<~12-word description, mirrors H1 — plain text, no [[wikilinks]]>"
 ---
 # <H1>
 

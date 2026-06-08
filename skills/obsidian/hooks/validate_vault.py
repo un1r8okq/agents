@@ -126,3 +126,29 @@ def format_report(
         )
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
+
+
+def main() -> int:
+    try:
+        stdin_text = sys.stdin.read()
+    except Exception:
+        stdin_text = ""
+    try:
+        vault = resolve_vault()
+        if vault is None:
+            return 0
+        skills_repo = Path(__file__).resolve().parents[3]
+        if not in_scope(read_cwd(stdin_text), vault, skills_repo):
+            return 0
+        report = format_report(
+            find_empty_notes(vault), find_duplicate_basenames(vault), vault
+        )
+        if report:
+            print(report)
+    except Exception:
+        return 0
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

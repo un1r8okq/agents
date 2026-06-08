@@ -1,4 +1,6 @@
+import io
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -128,3 +130,67 @@ def test_read_cwd_falls_back_when_json_is_not_object(monkeypatch):
     monkeypatch.chdir("/")
     assert vv.read_cwd("[]") == os.getcwd()
     assert vv.read_cwd("42") == os.getcwd()
+
+
+HOOK = os.path.join(os.path.dirname(__file__), "validate_vault.py")
+
+
+def _run(stdin_text, env_extra):
+    env = dict(os.environ)
+    env.pop("OBSIDIAN_VAULT", None)
+    env.pop("CLAUDE_ENV_FILE", None)
+    env.update(env_extra)
+    return subprocess.run(
+        [sys.executable, HOOK],
+        input=stdin_text, capture_output=True, text=True, env=env,
+    )
+
+
+def test_hook_reports_findings_when_cwd_in_vault(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Empty.md").write_text("")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "people/Empty.md" in r.stdout
+    assert r.stderr == ""
+
+
+def test_hook_silent_when_cwd_outside_scope(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Empty.md").write_text("")
+    outside = tmp_path.parent
+    r = _run(f'{{"cwd": "{outside}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert r.stdout == ""
+
+
+def test_hook_silent_when_clean(tmp_path):
+    (tmp_path / "misc").mkdir()
+    (tmp_path / "misc" / "Fine.md").write_text("ok\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert r.stdout == ""
+
+
+def test_hook_exit_zero_with_fallback_cwd_when_stdin_malformed(tmp_path):
+    # malformed stdin -> read_cwd falls back to os.getcwd(); still exits 0
+    r = _run("not json at all", {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+
+
+def test_hook_exit_zero_when_vault_unset(tmp_path):
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {})
+    assert r.returncode == 0
+    assert r.stdout == ""
+
+
+def test_main_returns_zero_when_a_check_raises(tmp_path, monkeypatch):
+    # Force an exception inside main()'s body; the never-fail guard must still return 0.
+    def _boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setenv("OBSIDIAN_VAULT", str(tmp_path))
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setattr(vv, "find_empty_notes", _boom)
+    monkeypatch.setattr("sys.stdin", io.StringIO(f'{{"cwd": "{tmp_path}"}}'))
+    assert vv.main() == 0

@@ -1,13 +1,13 @@
 ---
 name: refresh-person
-description: Refresh the `# Summary` and (optional) `# Stated views` blocks on a vault person note (`$OBSIDIAN_VAULT/people/<Name>.md`) so the meeting-prep view stays current with `# My notes`. Use when the user asks to regenerate, refresh, or update a person's summary or stated views, or when prepping for a meeting where the summary feels stale. Use proactively after meaningful edits to `# My notes`. Propose the new content as a diff for confirmation before writing.
+description: Refresh the `# Summary`, (optional) `# Stated views`, and `description:` frontmatter on a vault person note (`$OBSIDIAN_VAULT/people/<Name>.md`) so the meeting-prep view stays current with `# My notes`. Use when the user asks to regenerate, refresh, or update a person's summary or stated views, or when prepping for a meeting where the summary feels stale. Use proactively after meaningful edits to `# My notes`. Propose the new content as a diff for confirmation before writing.
 ---
 
 Vault conventions are defined in the `obsidian` skill body — activate it first.
 
 ## Scope
 
-Edits **only** the `# Summary` and `# Stated views` blocks. `# Stated views` is optional — create it when there's view content worth a section, skip it otherwise. Never touches `# My notes` (user-owned) or `# From LinkedIn` (owned by the `background` skill). Frontmatter is read-only — if `role` or `organisation` look stale, surface it; don't change silently.
+Edits the `# Summary` and `# Stated views` blocks and the `description:` frontmatter field. `# Stated views` is optional — create it when there's view content worth a section, skip it otherwise. Never touches `# My notes` (user-owned) or `# From LinkedIn` (owned by the `background` skill). All **other** frontmatter (`role`, `organisation`, `aliases`, …) is read-only — if it looks stale, surface it; don't change silently.
 
 ## Inputs
 
@@ -18,8 +18,8 @@ Edits **only** the `# Summary` and `# Stated views` blocks. `# Stated views` is 
 
 1. Read `$OBSIDIAN_VAULT/people/<Name>.md`. Capture: frontmatter, current `# Summary`, current `# Stated views` (if present), `# My notes`, `# From LinkedIn` (context only).
 2. Draft new content per "What goes where" below.
-3. Show the user a clear before/after diff for both blocks. **Wait for explicit confirmation** ("apply", "go ahead", "yes"). Do not write yet.
-4. On confirmation, replace the affected blocks via `Edit`. Touch nothing else.
+3. Show the user a clear before/after diff for the `# Summary`, `# Stated views`, and `description:`. **Wait for explicit confirmation** ("apply", "go ahead", "yes"). Do not write yet.
+4. On confirmation, update the `description:` line and replace the affected blocks via `Edit`. Touch nothing else.
 
 ## What goes where
 
@@ -49,6 +49,12 @@ Each bullet is a position the person has expressed on record:
 
 Create the section only when there's at least one substantive view. Don't write filler bullets like "interested in observability". Skip the section entirely on thin profiles.
 
+### `description:` — one plain-prose line
+
+The grep-survey hook — a one-sentence distillation that lets the person surface in a `grep ^description:` sweep across `people/`. Lead with role + org + the load-bearing context that distinguishes them from siblings. Keep it **coherent with the refreshed `# Summary`**: when the Summary changes materially, refresh the description to match.
+
+**Plain prose — no wikilinks.** `description:` is a metadata field: `[[…]]` adds noise to the grep survey and doesn't render as a link in Obsidian's properties view. Reserve wikilinks for the body blocks. Quote-wrap the value.
+
 ## Voice
 
 Match the user's existing tone — declarative, direct, no padding. Preserve load-bearing phrasings the user authored (specific quotes, framings) verbatim where still accurate.
@@ -69,6 +75,8 @@ Platform product lead in [[Lookout Tower Foundations]] at [[Adventure Bay Co]]; 
 - Reviewing AI-generated code needs a different model *family* — not just Opus vs Sonnet.
 ```
 
+Matching `description:` (plain prose, no wikilinks): `"Platform product lead in Lookout Tower Foundations at Adventure Bay Co; sponsors Rocky's tooling team; currently working FDC/WDF political ground."`
+
 Full before/after at [references/example.md](references/example.md).
 
 ## Constraints
@@ -78,4 +86,5 @@ Full before/after at [references/example.md](references/example.md).
 - **Don't flatten nuance.** If the notes capture competing positions or contested dynamics, keep both threads.
 - **Carry forward verification flags.** If `# My notes` flags a claim as needing verification, the Summary should signal it too.
 - **Stated views is optional.** Skip the section on thin profiles rather than writing filler.
-- **Minimal `Edit` calls.** One per block — or a single combined call when blocks are contiguous.
+- **Keep `description:` coherent with the Summary.** Refresh it whenever the Summary changes materially; plain prose, no wikilinks, quote-wrapped.
+- **Minimal `Edit` calls.** One per block (the `description:` is a separate frontmatter edit) — or a single combined call when blocks are contiguous.

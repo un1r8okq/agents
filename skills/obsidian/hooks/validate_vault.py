@@ -177,10 +177,15 @@ def in_scope(cwd: str, vault: Path, skills_repo: Path) -> bool:
 
 
 def format_report(
-    empty: list[Path], dups: list[tuple[str, list[Path]]], vault: Path
+    empty: list[Path],
+    dups: list[tuple[str, list[Path]]],
+    vault: Path,
+    *,
+    missing_desc: list[Path] = (),
+    bad_keys: list[tuple[Path, list[str]]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not empty and not dups:
+    if not (empty or dups or missing_desc or bad_keys):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -190,6 +195,14 @@ def format_report(
         dirs = ", ".join(sorted(str(p.relative_to(vault).parent) for p in paths))
         lines.append(
             f'- Duplicate basename "{name}": {dirs} — wikilinks resolve nondeterministically.'
+        )
+    for p in missing_desc:
+        rel = p.relative_to(vault)
+        lines.append(f"- Missing description: {rel} — invisible to the grep-survey discovery model.")
+    for p, keys in bad_keys:
+        rel = p.relative_to(vault)
+        lines.append(
+            f"- Non-lowercase frontmatter keys: {rel} ({', '.join(sorted(keys))}) — keys must be lowercase."
         )
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
@@ -208,7 +221,11 @@ def main() -> int:
         if not in_scope(read_cwd(stdin_text), vault, skills_repo):
             return 0
         report = format_report(
-            find_empty_notes(vault), find_duplicate_basenames(vault), vault
+            find_empty_notes(vault),
+            find_duplicate_basenames(vault),
+            vault,
+            missing_desc=find_missing_description(vault),
+            bad_keys=find_uppercase_frontmatter_keys(vault),
         )
         if report:
             print(report)

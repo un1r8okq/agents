@@ -177,7 +177,7 @@ def test_hook_silent_when_cwd_outside_scope(tmp_path):
 
 def test_hook_silent_when_clean(tmp_path):
     (tmp_path / "misc").mkdir()
-    (tmp_path / "misc" / "Fine.md").write_text("ok\n")
+    (tmp_path / "misc" / "Fine.md").write_text("---\ndescription: all good\n---\nok\n")
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert r.stdout == ""
@@ -284,3 +284,26 @@ def test_find_uppercase_frontmatter_keys_ignores_lowercase_and_aliases(tmp_path)
     (tmp_path / "people").mkdir()
     (tmp_path / "people" / "Good.md").write_text('---\nrole: x\ndescription: y\naliases:\n  - Will\n---\n')
     assert vv.find_uppercase_frontmatter_keys(tmp_path) == []
+
+
+def test_format_report_includes_missing_desc_and_bad_keys(tmp_path):
+    (tmp_path / "people").mkdir()
+    nodesc = tmp_path / "people" / "NoDesc.md"
+    nodesc.write_text("---\nrole: x\n---\n")
+    drift = tmp_path / "people" / "Drift.md"
+    drift.write_text("---\nRole: x\n---\n")
+    report = vv.format_report([], [], tmp_path, missing_desc=[nodesc], bad_keys=[(drift, ["Role"])])
+    assert "Missing description: people/NoDesc.md" in report
+    assert "Non-lowercase frontmatter keys: people/Drift.md (Role)" in report
+
+
+def test_format_report_empty_with_all_kwargs_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, missing_desc=[], bad_keys=[]) == ""
+
+
+def test_hook_reports_missing_description(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoDesc.md").write_text("---\nrole: x\n---\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Missing description: people/NoDesc.md" in r.stdout

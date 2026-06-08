@@ -368,7 +368,11 @@ def main() -> int:
     linkify = build_wikilinker(entities)
     original = daily_path.read_text()
     daily_fm = parse_frontmatter(original)
-    include_location = str(daily_fm.get("location", "")).strip().lower() != "home"
+    # Daily notes no longer carry frontmatter by default. Only show the Location
+    # column when a `location:` is explicitly set to something other than home
+    # (an opt-in override); a missing/empty location behaves like "home".
+    location = str(daily_fm.get("location", "")).strip().lower()
+    include_location = location not in ("", "home")
     block = render_block(events, linkify, entities, include_location)
     updated = upsert_schedule(original, block)
 

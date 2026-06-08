@@ -83,7 +83,7 @@ Apply the relevant section before any non-trivial write. These are the authorita
 
 | Directory | Required | Optional |
 | --- | --- | --- |
-| `daily/` | (none) | `location`, `sleep_hours`, `sleep_quality`, `exercise` |
+| `daily/` | (none) | (none) — daily notes carry no frontmatter; an optional `location: office \| client` may be added by hand to surface a Location column in `## Schedule` |
 | `daily/detail/` | `description:` | |
 | `engagements/<Engagement>/<Engagement>.md` | `client:`, `description:`, `status:` (`active` \| `complete`) | |
 | `engagements/<Engagement>/{context,timeline,decisions,people}.md` | `description:` | |
@@ -151,16 +151,10 @@ Genuinely new pattern *frames* (not just new instances) may warrant a named sub-
 
 Files in `daily/YYYY-MM-DD.md`.
 
-**Optional frontmatter:** `location: home | office | client`, `sleep_hours`, `sleep_quality`, `exercise`. The `update-daily-schedule.py` hook maintains the `## Schedule` table from Google Calendar.
+**Frontmatter:** none. Daily notes carry no frontmatter by default. The `update-daily-schedule.py` hook maintains the `## Schedule` table from Google Calendar regardless. An optional `location: office | client` may be added by hand to make the schedule table include a Location column; a missing or `home` location omits it.
 
 **Template:**
 ```
----
-location: home
----
-# Actions
-- [ ] <action item with [[wikilinks]]>
----
 # Notes
 ## <Topic or meeting>
 ```

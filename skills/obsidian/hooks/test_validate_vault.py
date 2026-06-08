@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -307,3 +308,65 @@ def test_hook_reports_missing_description(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "Missing description: people/NoDesc.md" in r.stdout
+
+
+def _skill_md_required_rows():
+    """Map each `dir`-cell -> Required-cell from SKILL.md's frontmatter table.
+
+    Treats escaped pipes (\\|) inside cells as literal, not column separators.
+    Only parses the table that immediately follows 'Required fields per directory'
+    to avoid picking up rows from other tables (e.g. the vault-structure table).
+    """
+    repo = Path(vv.__file__).resolve().parents[3]
+    skill = (repo / "skills" / "obsidian" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Required fields per directory" in skill
+    # Isolate only the lines that belong to the "Required fields" table.
+    lines = skill.splitlines()
+    in_section = False
+    table_lines = []
+    for line in lines:
+        if "Required fields per directory" in line:
+            in_section = True
+            continue
+        if in_section:
+            stripped = line.lstrip()
+            if stripped.startswith("|"):
+                table_lines.append(line)
+            elif table_lines:
+                # First non-pipe line after table rows signals end of table.
+                break
+    rows = {}
+    for line in table_lines:
+        safe = line.replace(r"\|", "\x00")
+        cells = [c.replace("\x00", "|").strip() for c in safe.strip().strip("|").split("|")]
+        if len(cells) >= 2 and cells[0].startswith("`"):
+            rows[cells[0]] = cells[1]
+    return skill, rows
+
+
+def test_description_required_dirs_match_skill_md():
+    skill, rows = _skill_md_required_rows()
+
+    def required_cells_for(token):
+        return [req for dircell, req in rows.items() if token in dircell]
+
+    for d in vv.DESCRIPTION_REQUIRED_DIRS:
+        cells = required_cells_for(f"`{d}/")
+        assert cells, f"no SKILL.md row for {d}/"
+        assert all("description:" in c for c in cells), f"{d}/ row(s) no longer require description: in SKILL.md"
+    detail = required_cells_for("`daily/detail/`")
+    assert detail and all("description:" in c for c in detail), "daily/detail/ must require description:"
+
+    daily_top = rows.get("`daily/`")
+    assert daily_top is not None, "no `daily/` row found in SKILL.md table"
+    assert "description:" not in daily_top, "daily/ must not require description:"
+
+    assert re.search(r"All keys.*lowercase", skill), "SKILL.md lowercase-keys rule missing"
+
+
+def test_hook_reports_uppercase_keys(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Drift.md").write_text('---\nRole: x\ndescription: ok\n---\n')
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Non-lowercase frontmatter keys: people/Drift.md (Role)" in r.stdout

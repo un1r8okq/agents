@@ -456,3 +456,28 @@ def test_find_missing_required_keys_engagement_overview(tmp_path):
     found = dict(vv.find_missing_required_keys(tmp_path))
     assert found[tmp_path / "engagements" / "DSO2" / "DSO2.md"] == ["client", "status"]
     assert (tmp_path / "engagements" / "DSO2" / "context.md") not in found
+
+
+def test_find_invalid_enum_values_flags_bad_relationship(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Bad.md").write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    assert (tmp_path / "orgs" / "Bad.md", "relationship", "friend") in vv.find_invalid_enum_values(tmp_path)
+
+
+def test_find_invalid_enum_values_accepts_valid_quoted_status(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text('---\nclient: "[[X]]"\nstatus: "active"\ndescription: d\n---\n')
+    assert vv.find_invalid_enum_values(tmp_path) == []
+
+
+def test_find_invalid_enum_values_flags_bad_status(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text('---\nclient: "[[X]]"\nstatus: done\ndescription: d\n---\n')
+    assert (tmp_path / "engagements" / "DSO2" / "DSO2.md", "status", "done") in vv.find_invalid_enum_values(tmp_path)
+
+
+def test_find_invalid_enum_values_ignores_absent_field(tmp_path):
+    # relationship absent -> the missing-key check owns that, not the enum check
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "NoRel.md").write_text("---\ndescription: d\n---\n")
+    assert vv.find_invalid_enum_values(tmp_path) == []

@@ -173,6 +173,28 @@ def find_missing_required_keys(vault: Path) -> list[tuple[Path, list[str]]]:
     return found
 
 
+def _strip_quotes(value: str) -> str:
+    """Strip a single matching surrounding quote pair from a frontmatter value."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def find_invalid_enum_values(vault: Path) -> list[tuple[Path, str, str]]:
+    """Return (path, field, value) where a required enum field is present but its value is not allowed."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        required = _required_keys(path.relative_to(vault))
+        fm = _read_frontmatter(path)
+        for field, allowed in ENUM_FIELDS.items():
+            if field in required and field in fm:
+                value = _strip_quotes(fm[field])
+                if value not in allowed:
+                    found.append((path, field, value))
+    return found
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

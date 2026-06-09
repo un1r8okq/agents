@@ -518,3 +518,27 @@ def test_hook_reports_invalid_enum_value(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert 'Invalid relationship value: orgs/Bad.md ("friend")' in r.stdout
+
+
+def test_required_key_matrix_matches_skill_md():
+    skill, rows = _skill_md_required_rows()
+
+    def req(key):
+        assert key in rows, f"SKILL.md table missing row {key}"
+        return rows[key]
+
+    people = req("`people/`")
+    assert "organisation:" in people and "role:" in people
+
+    orgs = req("`orgs/`")
+    assert "relationship:" in orgs
+    for v in vv.ENUM_FIELDS["relationship"]:
+        assert v in orgs, f"orgs relationship enum value {v!r} missing from SKILL.md"
+
+    assert "full:" in req("`glossary/`")
+    assert "full:" in req("`engagements/<Engagement>/glossary/`")
+
+    overview = req("`engagements/<Engagement>/<Engagement>.md`")
+    assert "client:" in overview and "status:" in overview
+    for v in vv.ENUM_FIELDS["status"]:
+        assert v in overview, f"status enum value {v!r} missing from SKILL.md"

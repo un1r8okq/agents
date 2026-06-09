@@ -481,3 +481,40 @@ def test_find_invalid_enum_values_ignores_absent_field(tmp_path):
     (tmp_path / "orgs").mkdir()
     (tmp_path / "orgs" / "NoRel.md").write_text("---\ndescription: d\n---\n")
     assert vv.find_invalid_enum_values(tmp_path) == []
+
+
+def test_format_report_includes_missing_keys_and_bad_enums(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "orgs").mkdir()
+    nokey = tmp_path / "people" / "NoRole.md"
+    nokey.write_text("---\norganisation: x\ndescription: d\n---\n")
+    badenum = tmp_path / "orgs" / "Bad.md"
+    badenum.write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    report = vv.format_report(
+        [], [], tmp_path,
+        missing_keys=[(nokey, ["role"])],
+        bad_enums=[(badenum, "relationship", "friend")],
+    )
+    assert "Missing required frontmatter: people/NoRole.md (role)" in report
+    assert 'Invalid relationship value: orgs/Bad.md ("friend")' in report
+    assert "must be one of client, employer, partner, vendor" in report
+
+
+def test_format_report_empty_with_inc2b_kwargs_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, missing_keys=[], bad_enums=[]) == ""
+
+
+def test_hook_reports_missing_required_key(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoRole.md").write_text("---\norganisation: x\ndescription: d\n---\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Missing required frontmatter: people/NoRole.md (role)" in r.stdout
+
+
+def test_hook_reports_invalid_enum_value(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Bad.md").write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert 'Invalid relationship value: orgs/Bad.md ("friend")' in r.stdout

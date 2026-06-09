@@ -262,9 +262,11 @@ def format_report(
     missing_desc: list[Path] = (),
     bad_keys: list[tuple[Path, list[str]]] = (),
     desc_links: list[Path] = (),
+    missing_keys: list[tuple[Path, list[str]]] = (),
+    bad_enums: list[tuple[Path, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links):
+    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -286,6 +288,15 @@ def format_report(
     for p in desc_links:
         rel = p.relative_to(vault)
         lines.append(f"- Wikilink in description: {rel} — descriptions must be plain text (no [[...]]).")
+    for p, keys in missing_keys:
+        rel = p.relative_to(vault)
+        lines.append(
+            f"- Missing required frontmatter: {rel} ({', '.join(sorted(keys))}) — required for this directory."
+        )
+    for p, field, value in bad_enums:
+        rel = p.relative_to(vault)
+        allowed = ", ".join(sorted(ENUM_FIELDS[field]))
+        lines.append(f'- Invalid {field} value: {rel} ("{value}") — must be one of {allowed}.')
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
 
@@ -309,6 +320,8 @@ def main() -> int:
             missing_desc=find_missing_description(vault),
             bad_keys=find_uppercase_frontmatter_keys(vault),
             desc_links=find_wikilinks_in_description(vault),
+            missing_keys=find_missing_required_keys(vault),
+            bad_enums=find_invalid_enum_values(vault),
         )
         if report:
             print(report)

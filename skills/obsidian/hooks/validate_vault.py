@@ -70,6 +70,40 @@ def _requires_description(rel: Path) -> bool:
     return False
 
 
+ENUM_FIELDS = {
+    "status": {"active", "complete"},
+    "relationship": {"employer", "client", "partner", "vendor"},
+}
+
+
+def _required_keys(rel: Path) -> set[str]:
+    """Non-`description` required frontmatter keys for a vault-relative path (per SKILL.md).
+
+    `description:` is enforced separately by find_missing_description, so it is
+    intentionally excluded here. The drift-guard test keeps this aligned with the
+    SKILL.md "Required fields per directory" table.
+    """
+    parts = rel.parts
+    if not parts:
+        return set()
+    top = parts[0]
+    if top == "people":
+        return {"organisation", "role"}
+    if top == "orgs":
+        return {"relationship"}
+    if top == "glossary":
+        return {"full"}
+    if top == "engagements":
+        # engagement-scoped glossary: engagements/<E>/glossary/<term>.md
+        if len(parts) >= 4 and parts[2] == "glossary":
+            return {"full"}
+        # engagement overview: engagements/<E>/<E>.md (file named after its dir)
+        if len(parts) == 3 and parts[2] == f"{parts[1]}.md":
+            return {"client", "status"}
+        return set()
+    return set()
+
+
 def find_empty_notes(vault: Path) -> list[Path]:
     """Return .md files whose content is empty or whitespace-only."""
     found = []

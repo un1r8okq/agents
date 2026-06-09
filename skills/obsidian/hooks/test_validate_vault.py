@@ -416,3 +416,21 @@ def test_find_wikilinks_in_description_ignores_entity_field_wikilinks(tmp_path):
     # organisation: legitimately keeps its wikilink; description is plain -> NOT flagged
     (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[ClearPoint]]"\ndescription: Lead engineer\n---\n')
     assert vv.find_wikilinks_in_description(tmp_path) == []
+
+
+def test_required_keys_by_directory():
+    from pathlib import Path as P
+    assert vv._required_keys(P("people/Foo.md")) == {"organisation", "role"}
+    assert vv._required_keys(P("orgs/Bar.md")) == {"relationship"}
+    assert vv._required_keys(P("glossary/x.md")) == {"full"}
+    assert vv._required_keys(P("engagements/DSO2/DSO2.md")) == {"client", "status"}
+    assert vv._required_keys(P("engagements/DSO2/context.md")) == set()
+    assert vv._required_keys(P("engagements/DSO2/glossary/MVR.md")) == {"full"}
+    assert vv._required_keys(P("misc/x.md")) == set()
+    assert vv._required_keys(P("daily/2026-01-01.md")) == set()
+    assert vv._required_keys(P("daily/detail/2026-01-01-x.md")) == set()
+
+
+def test_enum_fields_constant():
+    assert vv.ENUM_FIELDS["status"] == {"active", "complete"}
+    assert vv.ENUM_FIELDS["relationship"] == {"employer", "client", "partner", "vendor"}

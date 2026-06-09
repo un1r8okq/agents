@@ -70,6 +70,40 @@ def _requires_description(rel: Path) -> bool:
     return False
 
 
+ENUM_FIELDS = {
+    "status": {"active", "complete"},
+    "relationship": {"employer", "client", "partner", "vendor"},
+}
+
+
+def _required_keys(rel: Path) -> set[str]:
+    """Non-`description` required frontmatter keys for a vault-relative path (per SKILL.md).
+
+    `description:` is enforced separately by find_missing_description, so it is
+    intentionally excluded here. The drift-guard test keeps this aligned with the
+    SKILL.md "Required fields per directory" table.
+    """
+    parts = rel.parts
+    if not parts:
+        return set()
+    top = parts[0]
+    if top == "people":
+        return {"organisation", "role"}
+    if top == "orgs":
+        return {"relationship"}
+    if top == "glossary":
+        return {"full"}
+    if top == "engagements":
+        # engagement-scoped glossary: engagements/<E>/glossary/<term>.md
+        if len(parts) >= 4 and parts[2] == "glossary":
+            return {"full"}
+        # engagement overview: engagements/<E>/<E>.md (file named after its dir)
+        if len(parts) == 3 and parts[2] == f"{parts[1]}.md":
+            return {"client", "status"}
+        return set()
+    return set()
+
+
 def find_empty_notes(vault: Path) -> list[Path]:
     """Return .md files whose content is empty or whitespace-only."""
     found = []
@@ -123,6 +157,41 @@ def find_wikilinks_in_description(vault: Path) -> list[Path]:
     for path in sorted(_iter_notes(vault)):
         if "[[" in _read_frontmatter(path).get("description", ""):
             found.append(path)
+    return found
+
+
+def find_missing_required_keys(vault: Path) -> list[tuple[Path, list[str]]]:
+    """Return (path, missing keys) for notes lacking required frontmatter keys (per the directory matrix)."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        required = _required_keys(path.relative_to(vault))
+        if not required:
+            continue
+        missing = sorted(required - set(_read_frontmatter(path)))
+        if missing:
+            found.append((path, missing))
+    return found
+
+
+def _strip_quotes(value: str) -> str:
+    """Strip a single matching surrounding quote pair from a frontmatter value."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        return value[1:-1]
+    return value
+
+
+def find_invalid_enum_values(vault: Path) -> list[tuple[Path, str, str]]:
+    """Return (path, field, value) where a required enum field is present but its value is not allowed."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        required = _required_keys(path.relative_to(vault))
+        fm = _read_frontmatter(path)
+        for field, allowed in ENUM_FIELDS.items():
+            if field in required and field in fm:
+                value = _strip_quotes(fm[field])
+                if value not in allowed:
+                    found.append((path, field, value))
     return found
 
 
@@ -193,9 +262,11 @@ def format_report(
     missing_desc: list[Path] = (),
     bad_keys: list[tuple[Path, list[str]]] = (),
     desc_links: list[Path] = (),
+    missing_keys: list[tuple[Path, list[str]]] = (),
+    bad_enums: list[tuple[Path, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links):
+    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -217,6 +288,15 @@ def format_report(
     for p in desc_links:
         rel = p.relative_to(vault)
         lines.append(f"- Wikilink in description: {rel} — descriptions must be plain text (no [[...]]).")
+    for p, keys in missing_keys:
+        rel = p.relative_to(vault)
+        lines.append(
+            f"- Missing required frontmatter: {rel} ({', '.join(sorted(keys))}) — required for this directory."
+        )
+    for p, field, value in bad_enums:
+        rel = p.relative_to(vault)
+        allowed = ", ".join(sorted(ENUM_FIELDS[field]))
+        lines.append(f'- Invalid {field} value: {rel} ("{value}") — must be one of {allowed}.')
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
 
@@ -240,6 +320,8 @@ def main() -> int:
             missing_desc=find_missing_description(vault),
             bad_keys=find_uppercase_frontmatter_keys(vault),
             desc_links=find_wikilinks_in_description(vault),
+            missing_keys=find_missing_required_keys(vault),
+            bad_enums=find_invalid_enum_values(vault),
         )
         if report:
             print(report)

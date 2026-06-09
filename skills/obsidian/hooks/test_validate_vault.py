@@ -416,3 +416,129 @@ def test_find_wikilinks_in_description_ignores_entity_field_wikilinks(tmp_path):
     # organisation: legitimately keeps its wikilink; description is plain -> NOT flagged
     (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[ClearPoint]]"\ndescription: Lead engineer\n---\n')
     assert vv.find_wikilinks_in_description(tmp_path) == []
+
+
+def test_required_keys_by_directory():
+    from pathlib import Path as P
+    assert vv._required_keys(P("people/Foo.md")) == {"organisation", "role"}
+    assert vv._required_keys(P("orgs/Bar.md")) == {"relationship"}
+    assert vv._required_keys(P("glossary/x.md")) == {"full"}
+    assert vv._required_keys(P("engagements/DSO2/DSO2.md")) == {"client", "status"}
+    assert vv._required_keys(P("engagements/DSO2/context.md")) == set()
+    assert vv._required_keys(P("engagements/DSO2/glossary/MVR.md")) == {"full"}
+    assert vv._required_keys(P("misc/x.md")) == set()
+    assert vv._required_keys(P("daily/2026-01-01.md")) == set()
+    assert vv._required_keys(P("daily/detail/2026-01-01-x.md")) == set()
+
+
+def test_enum_fields_constant():
+    assert vv.ENUM_FIELDS["status"] == {"active", "complete"}
+    assert vv.ENUM_FIELDS["relationship"] == {"employer", "client", "partner", "vendor"}
+
+
+def test_find_missing_required_keys_flags_people_missing_role(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoRole.md").write_text('---\norganisation: "[[X]]"\ndescription: d\n---\n')
+    found = dict(vv.find_missing_required_keys(tmp_path))
+    assert found[tmp_path / "people" / "NoRole.md"] == ["role"]
+
+
+def test_find_missing_required_keys_passes_complete_people(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[X]]"\nrole: Lead\ndescription: d\n---\n')
+    assert vv.find_missing_required_keys(tmp_path) == []
+
+
+def test_find_missing_required_keys_engagement_overview(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text("---\ndescription: d\n---\n")
+    (tmp_path / "engagements" / "DSO2" / "context.md").write_text("---\ndescription: d\n---\n")
+    found = dict(vv.find_missing_required_keys(tmp_path))
+    assert found[tmp_path / "engagements" / "DSO2" / "DSO2.md"] == ["client", "status"]
+    assert (tmp_path / "engagements" / "DSO2" / "context.md") not in found
+
+
+def test_find_invalid_enum_values_flags_bad_relationship(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Bad.md").write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    assert (tmp_path / "orgs" / "Bad.md", "relationship", "friend") in vv.find_invalid_enum_values(tmp_path)
+
+
+def test_find_invalid_enum_values_accepts_valid_quoted_status(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text('---\nclient: "[[X]]"\nstatus: "active"\ndescription: d\n---\n')
+    assert vv.find_invalid_enum_values(tmp_path) == []
+
+
+def test_find_invalid_enum_values_flags_bad_status(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text('---\nclient: "[[X]]"\nstatus: done\ndescription: d\n---\n')
+    assert (tmp_path / "engagements" / "DSO2" / "DSO2.md", "status", "done") in vv.find_invalid_enum_values(tmp_path)
+
+
+def test_find_invalid_enum_values_ignores_absent_field(tmp_path):
+    # relationship absent -> the missing-key check owns that, not the enum check
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "NoRel.md").write_text("---\ndescription: d\n---\n")
+    assert vv.find_invalid_enum_values(tmp_path) == []
+
+
+def test_format_report_includes_missing_keys_and_bad_enums(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "orgs").mkdir()
+    nokey = tmp_path / "people" / "NoRole.md"
+    nokey.write_text("---\norganisation: x\ndescription: d\n---\n")
+    badenum = tmp_path / "orgs" / "Bad.md"
+    badenum.write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    report = vv.format_report(
+        [], [], tmp_path,
+        missing_keys=[(nokey, ["role"])],
+        bad_enums=[(badenum, "relationship", "friend")],
+    )
+    assert "Missing required frontmatter: people/NoRole.md (role)" in report
+    assert 'Invalid relationship value: orgs/Bad.md ("friend")' in report
+    assert "must be one of client, employer, partner, vendor" in report
+
+
+def test_format_report_empty_with_inc2b_kwargs_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, missing_keys=[], bad_enums=[]) == ""
+
+
+def test_hook_reports_missing_required_key(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoRole.md").write_text("---\norganisation: x\ndescription: d\n---\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Missing required frontmatter: people/NoRole.md (role)" in r.stdout
+
+
+def test_hook_reports_invalid_enum_value(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Bad.md").write_text("---\nrelationship: friend\ndescription: d\n---\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert 'Invalid relationship value: orgs/Bad.md ("friend")' in r.stdout
+
+
+def test_required_key_matrix_matches_skill_md():
+    skill, rows = _skill_md_required_rows()
+
+    def req(key):
+        assert key in rows, f"SKILL.md table missing row {key}"
+        return rows[key]
+
+    people = req("`people/`")
+    assert "organisation:" in people and "role:" in people
+
+    orgs = req("`orgs/`")
+    assert "relationship:" in orgs
+    for v in vv.ENUM_FIELDS["relationship"]:
+        assert v in orgs, f"orgs relationship enum value {v!r} missing from SKILL.md"
+
+    assert "full:" in req("`glossary/`")
+    assert "full:" in req("`engagements/<Engagement>/glossary/`")
+
+    overview = req("`engagements/<Engagement>/<Engagement>.md`")
+    assert "client:" in overview and "status:" in overview
+    for v in vv.ENUM_FIELDS["status"]:
+        assert v in overview, f"status enum value {v!r} missing from SKILL.md"

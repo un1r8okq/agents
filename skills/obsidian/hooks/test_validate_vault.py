@@ -434,3 +434,25 @@ def test_required_keys_by_directory():
 def test_enum_fields_constant():
     assert vv.ENUM_FIELDS["status"] == {"active", "complete"}
     assert vv.ENUM_FIELDS["relationship"] == {"employer", "client", "partner", "vendor"}
+
+
+def test_find_missing_required_keys_flags_people_missing_role(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoRole.md").write_text('---\norganisation: "[[X]]"\ndescription: d\n---\n')
+    found = dict(vv.find_missing_required_keys(tmp_path))
+    assert found[tmp_path / "people" / "NoRole.md"] == ["role"]
+
+
+def test_find_missing_required_keys_passes_complete_people(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Ok.md").write_text('---\norganisation: "[[X]]"\nrole: Lead\ndescription: d\n---\n')
+    assert vv.find_missing_required_keys(tmp_path) == []
+
+
+def test_find_missing_required_keys_engagement_overview(tmp_path):
+    (tmp_path / "engagements" / "DSO2").mkdir(parents=True)
+    (tmp_path / "engagements" / "DSO2" / "DSO2.md").write_text("---\ndescription: d\n---\n")
+    (tmp_path / "engagements" / "DSO2" / "context.md").write_text("---\ndescription: d\n---\n")
+    found = dict(vv.find_missing_required_keys(tmp_path))
+    assert found[tmp_path / "engagements" / "DSO2" / "DSO2.md"] == ["client", "status"]
+    assert (tmp_path / "engagements" / "DSO2" / "context.md") not in found

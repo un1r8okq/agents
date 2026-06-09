@@ -160,6 +160,19 @@ def find_wikilinks_in_description(vault: Path) -> list[Path]:
     return found
 
 
+def find_missing_required_keys(vault: Path) -> list[tuple[Path, list[str]]]:
+    """Return (path, missing keys) for notes lacking required frontmatter keys (per the directory matrix)."""
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        required = _required_keys(path.relative_to(vault))
+        if not required:
+            continue
+        missing = sorted(required - set(_read_frontmatter(path)))
+        if missing:
+            found.append((path, missing))
+    return found
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

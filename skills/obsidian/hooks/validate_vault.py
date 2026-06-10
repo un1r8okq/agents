@@ -395,9 +395,11 @@ def format_report(
     desc_links: list[Path] = (),
     missing_keys: list[tuple[Path, list[str]]] = (),
     bad_enums: list[tuple[Path, str, str]] = (),
+    stale_people: list[str] = (),
+    stale_context: list[tuple[str, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums):
+    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums or stale_people or stale_context):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -428,6 +430,18 @@ def format_report(
         rel = p.relative_to(vault)
         allowed = ", ".join(sorted(ENUM_FIELDS[field]))
         lines.append(f'- Invalid {field} value: {rel} ("{value}") — must be one of {allowed}.')
+    if stale_people:
+        shown = ", ".join(stale_people[:15])
+        more = f" (+{len(stale_people) - 15} more)" if len(stale_people) > 15 else ""
+        lines.append(
+            "- Stale person notes (discussed more recently than their newest dated entry) — "
+            f"consider refresh-person: {shown}{more}."
+        )
+    for engagement, refreshed, trigger in stale_context:
+        lines.append(
+            f"- Stale engagement context: {engagement} (last refreshed {refreshed}; "
+            f"{trigger} decant mentions it) — re-run the context refresh."
+        )
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
 
@@ -510,6 +524,7 @@ def main() -> int:
             _debug("cwd outside vault/skills-repo — exiting 0 (silent)")
             return 0
         start = time.perf_counter()
+        today = date.today()
         report = format_report(
             _timed("find_empty_notes", find_empty_notes, vault),
             _timed("find_duplicate_basenames", find_duplicate_basenames, vault),
@@ -519,6 +534,8 @@ def main() -> int:
             desc_links=_timed("find_wikilinks_in_description", find_wikilinks_in_description, vault),
             missing_keys=_timed("find_missing_required_keys", find_missing_required_keys, vault),
             bad_enums=_timed("find_invalid_enum_values", find_invalid_enum_values, vault),
+            stale_people=_timed("find_stale_person_notes", find_stale_person_notes, vault, today),
+            stale_context=_timed("find_stale_context", find_stale_context, vault, today),
         )
         _debug(
             f"scan complete in {(time.perf_counter() - start) * 1000:.0f}ms — "

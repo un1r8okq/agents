@@ -723,3 +723,42 @@ def test_find_stale_context_skips_when_no_marker(tmp_path):
     (d / "context.md").write_text("---\ndescription: ctx\n---\nno refresh marker here\n")
     _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
     assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_format_report_includes_freshness(tmp_path):
+    report = vv.format_report(
+        [], [], tmp_path,
+        stale_people=["Gagan Dhaliwal", "Leon"],
+        stale_context=[("DSO2", "2026-06-05", "2026-06-08")],
+    )
+    assert "consider refresh-person: Gagan Dhaliwal, Leon" in report
+    assert "Stale engagement context: DSO2 (last refreshed 2026-06-05; 2026-06-08 decant mentions it)" in report
+
+
+def test_format_report_freshness_caps_at_15(tmp_path):
+    people = [f"P{i:02d}" for i in range(20)]
+    report = vv.format_report([], [], tmp_path, stale_people=people)
+    assert "+5 more" in report
+
+
+def test_format_report_empty_with_freshness_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, stale_people=[], stale_context=[]) == ""
+
+
+def test_hook_reports_stale_person(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-04]]\n")
+    _make_daily(tmp_path, date.today().isoformat(), "standup with [[Gagan Dhaliwal]]\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "consider refresh-person: Gagan Dhaliwal" in r.stdout
+
+
+def test_hook_reports_stale_context(tmp_path):
+    d = tmp_path / "engagements" / "DSO2"
+    d.mkdir(parents=True)
+    (d / "context.md").write_text("---\ndescription: ctx\n---\n*Last refreshed: [[2026-01-01]].*\n")
+    # a decanted daily dated today (> last refreshed) mentioning the engagement
+    _make_daily(tmp_path, date.today().isoformat(), "# Summary\nstandup re [[DSO2]]\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Stale engagement context: DSO2" in r.stdout

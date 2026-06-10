@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import time
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -72,7 +73,7 @@ def _requires_description(rel: Path) -> bool:
 
 ENUM_FIELDS = {
     "status": {"active", "complete"},
-    "relationship": {"employer", "client", "partner", "vendor"},
+    "relationship": {"employer", "client", "partner", "vendor", "organisation"},
 }
 
 
@@ -301,31 +302,105 @@ def format_report(
     return "\n".join(lines)
 
 
-def main() -> int:
+def _debug_enabled() -> bool:
+    """True when $VALIDATE_VAULT_DEBUG is set to a non-empty value."""
+    return bool(os.environ.get("VALIDATE_VAULT_DEBUG"))
+
+
+def _debug(msg: str) -> None:
+    """Emit a diagnostic line to stderr, gated on $VALIDATE_VAULT_DEBUG.
+
+    stdout is reserved for the SessionStart nudge (injected as context), so all
+    debugging goes to stderr and stays silent unless the flag is set.
+    """
+    if _debug_enabled():
+        print(f"[validate-vault] {msg}", file=sys.stderr)
+
+
+def _read_stdin() -> str:
+    """Read the hook's stdin JSON, returning '' without blocking on a TTY.
+
+    The SessionStart hook pipes a JSON payload and closes the stream, so read()
+    returns at once. Run manually in a terminal, stdin is a TTY and a bare
+    read() would block forever waiting for input — so skip it there and let
+    read_cwd() fall back to os.getcwd().
+    """
     try:
-        stdin_text = sys.stdin.read()
-    except Exception:
-        stdin_text = ""
+        if sys.stdin.isatty():
+            _debug("stdin: tty — skipping read (falling back to cwd)")
+            return ""
+        text = sys.stdin.read()
+        _debug(f"stdin: read {len(text)} byte(s)")
+        return text
+    except Exception as exc:  # never let stdin handling break the hook
+        _debug(f"stdin: read failed ({exc!r}); falling back to cwd")
+        return ""
+
+
+def _timed(label: str, fn, *args, **kwargs):
+    """Run a check, logging its finding count and elapsed time when debugging."""
+    if not _debug_enabled():
+        return fn(*args, **kwargs)
+    start = time.perf_counter()
+    result = fn(*args, **kwargs)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    try:
+        count = len(result)
+    except TypeError:
+        count = "?"
+    _debug(f"{label}: {count} finding(s) in {elapsed_ms:.0f}ms")
+    return result
+
+
+def _ok_message(checked: int) -> str:
+    """Positive happy-path confirmation: in-scope, scanned, no findings.
+
+    Returns '' when nothing was scanned (empty/misconfigured vault) — there is
+    nothing to affirm, so the hook stays silent rather than print "0 notes".
+    """
+    if checked <= 0:
+        return ""
+    noun = "note" if checked == 1 else "notes"
+    return f"validate-vault: vault integrity OK — {checked} {noun} checked, no issues."
+
+
+def main() -> int:
+    stdin_text = _read_stdin()
     try:
         vault = resolve_vault()
         if vault is None:
+            _debug("OBSIDIAN_VAULT not resolved to a directory — exiting 0")
             return 0
         skills_repo = Path(__file__).resolve().parents[3]
-        if not in_scope(read_cwd(stdin_text), vault, skills_repo):
+        cwd = read_cwd(stdin_text)
+        scoped = in_scope(cwd, vault, skills_repo)
+        _debug(f"vault={vault}")
+        _debug(f"cwd={cwd} skills_repo={skills_repo} in_scope={scoped}")
+        if not scoped:
+            _debug("cwd outside vault/skills-repo — exiting 0 (silent)")
             return 0
+        start = time.perf_counter()
         report = format_report(
-            find_empty_notes(vault),
-            find_duplicate_basenames(vault),
+            _timed("find_empty_notes", find_empty_notes, vault),
+            _timed("find_duplicate_basenames", find_duplicate_basenames, vault),
             vault,
-            missing_desc=find_missing_description(vault),
-            bad_keys=find_uppercase_frontmatter_keys(vault),
-            desc_links=find_wikilinks_in_description(vault),
-            missing_keys=find_missing_required_keys(vault),
-            bad_enums=find_invalid_enum_values(vault),
+            missing_desc=_timed("find_missing_description", find_missing_description, vault),
+            bad_keys=_timed("find_uppercase_frontmatter_keys", find_uppercase_frontmatter_keys, vault),
+            desc_links=_timed("find_wikilinks_in_description", find_wikilinks_in_description, vault),
+            missing_keys=_timed("find_missing_required_keys", find_missing_required_keys, vault),
+            bad_enums=_timed("find_invalid_enum_values", find_invalid_enum_values, vault),
         )
-        if report:
-            print(report)
-    except Exception:
+        _debug(
+            f"scan complete in {(time.perf_counter() - start) * 1000:.0f}ms — "
+            f"report {'non-empty' if report else 'empty'}"
+        )
+        # Findings -> the report; clean & in-scope -> positive confirmation (note
+        # count evaluated only on the clean path, via short-circuit).
+        out = report or _ok_message(sum(1 for _ in _iter_notes(vault)))
+        if out:
+            print(out)
+    except Exception as exc:
+        _debug(f"exception suppressed (exit 0): {exc!r}")
         return 0
     return 0
 

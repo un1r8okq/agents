@@ -90,7 +90,7 @@ Apply the relevant section before any non-trivial write. These are the authorita
 | `engagements/<Engagement>/glossary/` | `full:`, `description:` | |
 | `glossary/` | `full:`, `description:` | |
 | `misc/` | `description:` | |
-| `orgs/` | `relationship:` (`employer` \| `client` \| `partner` \| `vendor`), `description:` | |
+| `orgs/` | `relationship:` (`employer` \| `client` \| `partner` \| `vendor` \| `organisation`), `description:` | |
 | `people/` | `organisation:`, `role:`, `description:` | `joined:` (YYYY-MM-DD), `aliases:`, `mistranscriptions:` |
 
 **Wikilinks in frontmatter:** for entity fields (`organisation:`, `client:`), use full wikilink syntax — `organisation: "[[Adventure Bay Council]]"`. Quote-wrap to avoid YAML parsing issues.
@@ -242,7 +242,7 @@ Engagements live in a per-engagement **directory** at `engagements/<Engagement>/
 
 Files in `orgs/<Org>.md`.
 
-**Required frontmatter:** `relationship: employer | client | partner | vendor`, `description:`.
+**Required frontmatter:** `relationship: employer | client | partner | vendor | organisation`, `description:`. Use `organisation` for orgs with no commercial relationship to Will / ClearPoint — personal or community bodies (e.g. a club Will belongs to).
 
 **Body:** lead with what the org does; note the relationship with Will / ClearPoint where relevant; link to engagements, people, and key projects.
 

@@ -176,12 +176,28 @@ def test_hook_silent_when_cwd_outside_scope(tmp_path):
     assert r.stdout == ""
 
 
-def test_hook_silent_when_clean(tmp_path):
+def test_hook_reports_ok_when_clean(tmp_path):
+    # Happy path: in scope, scanned, no findings -> positive confirmation with note count.
     (tmp_path / "misc").mkdir()
     (tmp_path / "misc" / "Fine.md").write_text("---\ndescription: all good\n---\nok\n")
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
+    assert "vault integrity OK" in r.stdout
+    assert "1 note checked" in r.stdout          # singular, exactly one .md note
+    assert r.stderr == ""
+
+
+def test_hook_silent_when_no_notes_to_check(tmp_path):
+    # Empty/misconfigured vault: nothing scanned -> no positive message, stays silent.
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
     assert r.stdout == ""
+
+
+def test_ok_message_count_and_pluralization():
+    assert vv._ok_message(142) == "validate-vault: vault integrity OK — 142 notes checked, no issues."
+    assert vv._ok_message(1).endswith("1 note checked, no issues.")   # singular
+    assert vv._ok_message(0) == ""                                    # nothing scanned -> silent
 
 
 def test_hook_exit_zero_with_fallback_cwd_when_stdin_malformed(tmp_path):
@@ -433,7 +449,7 @@ def test_required_keys_by_directory():
 
 def test_enum_fields_constant():
     assert vv.ENUM_FIELDS["status"] == {"active", "complete"}
-    assert vv.ENUM_FIELDS["relationship"] == {"employer", "client", "partner", "vendor"}
+    assert vv.ENUM_FIELDS["relationship"] == {"employer", "client", "partner", "vendor", "organisation"}
 
 
 def test_find_missing_required_keys_flags_people_missing_role(tmp_path):
@@ -497,7 +513,7 @@ def test_format_report_includes_missing_keys_and_bad_enums(tmp_path):
     )
     assert "Missing required frontmatter: people/NoRole.md (role)" in report
     assert 'Invalid relationship value: orgs/Bad.md ("friend")' in report
-    assert "must be one of client, employer, partner, vendor" in report
+    assert "must be one of client, employer, organisation, partner, vendor" in report
 
 
 def test_format_report_empty_with_inc2b_kwargs_empty(tmp_path):
@@ -518,6 +534,59 @@ def test_hook_reports_invalid_enum_value(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert 'Invalid relationship value: orgs/Bad.md ("friend")' in r.stdout
+
+
+def test_read_stdin_returns_empty_on_tty_without_blocking(monkeypatch):
+    class FakeTTY:
+        def isatty(self):
+            return True
+
+        def read(self):  # must never be reached — would block on a real tty
+            raise AssertionError("read() must not be called when stdin is a tty")
+
+    monkeypatch.setattr("sys.stdin", FakeTTY())
+    assert vv._read_stdin() == ""
+
+
+def test_read_stdin_reads_when_not_tty(monkeypatch):
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"cwd": "/x"}'))  # StringIO.isatty() is False
+    assert vv._read_stdin() == '{"cwd": "/x"}'
+
+
+def test_debug_silent_by_default_on_stderr(tmp_path):
+    # No VALIDATE_VAULT_DEBUG -> findings on stdout, stderr stays empty.
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Empty.md").write_text("")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "people/Empty.md" in r.stdout
+    assert r.stderr == ""
+
+
+def test_debug_writes_to_stderr_when_enabled(tmp_path):
+    # VALIDATE_VAULT_DEBUG set -> diagnostics on stderr; stdout still carries findings only.
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Empty.md").write_text("")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path), "VALIDATE_VAULT_DEBUG": "1"})
+    assert r.returncode == 0
+    assert "people/Empty.md" in r.stdout
+    assert "[validate-vault]" not in r.stdout       # debug never leaks onto stdout
+    assert f"vault={tmp_path}" in r.stderr
+    assert "in_scope=True" in r.stderr
+    assert "find_empty_notes" in r.stderr
+
+
+def test_debug_reports_out_of_scope_reason_on_stderr(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "Empty.md").write_text("")
+    outside = tmp_path.parent
+    r = _run(
+        f'{{"cwd": "{outside}"}}',
+        {"OBSIDIAN_VAULT": str(tmp_path), "VALIDATE_VAULT_DEBUG": "1"},
+    )
+    assert r.returncode == 0
+    assert r.stdout == ""                # out of scope -> still silent on stdout
+    assert "in_scope=False" in r.stderr  # but debug explains why
 
 
 def test_required_key_matrix_matches_skill_md():

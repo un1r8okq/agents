@@ -643,3 +643,45 @@ def test_last_refreshed_parses_marker():
     assert vv._last_refreshed("*Last refreshed: [[2026-06-09]]. Next refresh: next decant.*") == date(2026, 6, 9)
     assert vv._last_refreshed("Last refreshed: 2026-06-05") == date(2026, 6, 5)
     assert vv._last_refreshed("no marker") is None
+
+
+def _make_person(tmp_path, name, body):
+    (tmp_path / "people").mkdir(exist_ok=True)
+    (tmp_path / "people" / f"{name}.md").write_text(body)
+
+
+def _make_daily(tmp_path, d, body):
+    (tmp_path / "daily").mkdir(exist_ok=True)
+    (tmp_path / "daily" / f"{d}.md").write_text(body)
+
+
+def test_find_stale_person_notes_flags_lagging_note(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-04]]\n")
+    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
+
+
+def test_find_stale_person_notes_fresh_note_not_flagged(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nupdated [[2026-06-08]]\n")
+    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_no_date_ref_skipped(tmp_path):
+    _make_person(tmp_path, "Leon", "# Summary\nno dates in this note\n")
+    _make_daily(tmp_path, "2026-06-08", "chat with [[Leon]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_old_mention_outside_window(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-01]]\n")
+    _make_daily(tmp_path, "2026-05-01", "old standup with [[Gagan Dhaliwal]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_takes_latest_mention(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-06]]\n")
+    _make_daily(tmp_path, "2026-06-05", "early [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, "2026-06-08", "later [[Gagan Dhaliwal]]\n")
+    # note date-ref is 06-06; if MAX mention (06-08) is used -> stale; if MIN (06-05) -> fresh
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]

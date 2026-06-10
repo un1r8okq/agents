@@ -255,6 +255,43 @@ def _last_refreshed(text: str) -> date | None:
         return None
 
 
+def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[str]:
+    """Return person stems discussed in a recent daily more recently than their newest dated entry.
+
+    Relies on the full-name wikilink convention: a daily must link the person by
+    their note stem (`[[Gagan Dhaliwal]]` or `[[Gagan Dhaliwal|Gagan]]`); a bare
+    alias `[[Gagan]]` with no matching people/ file is not counted.
+    """
+    people_dir = vault / "people"
+    if not people_dir.is_dir():
+        return []
+    stems = {p.stem for p in people_dir.glob("*.md")}
+    if not stems:
+        return []
+    latest_mention: dict[str, date] = {}
+    for daily in _recent_daily_files(vault, days, today):
+        d = _daily_date(daily)
+        if d is None:  # _recent_daily_files already filters these out; defensive
+            continue
+        try:
+            text = daily.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for target in _wikilink_targets(text):
+            if target in stems and (target not in latest_mention or d > latest_mention[target]):
+                latest_mention[target] = d
+    stale = []
+    for person, mention_date in latest_mention.items():
+        try:
+            note_text = (people_dir / f"{person}.md").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        note_date = _max_date_ref(note_text)
+        if note_date is not None and mention_date > note_date:
+            stale.append(person)
+    return sorted(stale)
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

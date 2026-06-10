@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -611,3 +612,34 @@ def test_required_key_matrix_matches_skill_md():
     assert "client:" in overview and "status:" in overview
     for v in vv.ENUM_FIELDS["status"]:
         assert v in overview, f"status enum value {v!r} missing from SKILL.md"
+
+
+def test_daily_date_parses_filename(tmp_path):
+    assert vv._daily_date(tmp_path / "2026-06-08.md") == date(2026, 6, 8)
+    assert vv._daily_date(tmp_path / "template.md") is None
+    assert vv._daily_date(tmp_path / "2026-13-99.md") is None
+
+
+def test_recent_daily_files_window(tmp_path):
+    (tmp_path / "daily").mkdir()
+    for d in ("2026-05-01", "2026-06-05", "2026-06-09"):
+        (tmp_path / "daily" / f"{d}.md").write_text("x")
+    (tmp_path / "daily" / "template.md").write_text("x")
+    got = {p.name for p in vv._recent_daily_files(tmp_path, 14, date(2026, 6, 9))}
+    assert got == {"2026-06-05.md", "2026-06-09.md"}
+
+
+def test_wikilink_targets_handles_alias_and_heading():
+    t = "see [[Gagan Dhaliwal|Gagan]] and [[DSO2]] and [[Note#Heading]] and [[2026-06-08]]"
+    assert vv._wikilink_targets(t) == {"Gagan Dhaliwal", "DSO2", "Note", "2026-06-08"}
+
+
+def test_max_date_ref():
+    assert vv._max_date_ref("a [[2026-05-29]] b [[2026-06-08-ww-standup]] c") == date(2026, 6, 8)
+    assert vv._max_date_ref("no dates here") is None
+
+
+def test_last_refreshed_parses_marker():
+    assert vv._last_refreshed("*Last refreshed: [[2026-06-09]]. Next refresh: next decant.*") == date(2026, 6, 9)
+    assert vv._last_refreshed("Last refreshed: 2026-06-05") == date(2026, 6, 5)
+    assert vv._last_refreshed("no marker") is None

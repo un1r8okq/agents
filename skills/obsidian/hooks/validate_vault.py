@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+from datetime import date, timedelta
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -194,6 +195,64 @@ def find_invalid_enum_values(vault: Path) -> list[tuple[Path, str, str]]:
                 if value not in allowed:
                     found.append((path, field, value))
     return found
+
+
+def _daily_date(path: Path) -> date | None:
+    """Parse a YYYY-MM-DD date from a daily-note filename stem, else None."""
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", path.stem)
+    if not m:
+        return None
+    try:
+        return date(int(m[1]), int(m[2]), int(m[3]))
+    except ValueError:
+        return None
+
+
+def _recent_daily_files(vault: Path, days: int, today: date) -> list[Path]:
+    """Return daily/YYYY-MM-DD.md files whose date is in [today-days, today]."""
+    cutoff = today - timedelta(days=days)
+    out = []
+    for path in (vault / "daily").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+        d = _daily_date(path)
+        if d is not None and cutoff <= d <= today:
+            out.append(path)
+    return sorted(out)
+
+
+def _wikilink_targets(text: str) -> set[str]:
+    """Return the set of [[Target]] targets (text before any | or #), stripped."""
+    targets = set()
+    for m in re.finditer(r"\[\[([^\]]+)\]\]", text):
+        target = re.split(r"[|#]", m.group(1), maxsplit=1)[0].strip()
+        if target:
+            targets.add(target)
+    return targets
+
+
+def _max_date_ref(text: str) -> date | None:
+    """Return the newest [[YYYY-MM-DD...]] date referenced in text, else None.
+
+    Matches both pure date-links ([[2026-06-08]]) and date-prefixed detail-note
+    links ([[2026-06-08-ww-standup]]).
+    """
+    dates = []
+    for m in re.finditer(r"\[\[(\d{4})-(\d{2})-(\d{2})", text):
+        try:
+            dates.append(date(int(m[1]), int(m[2]), int(m[3])))
+        except ValueError:
+            pass
+    return max(dates) if dates else None
+
+
+def _last_refreshed(text: str) -> date | None:
+    """Parse the date from a `Last refreshed: [[YYYY-MM-DD]]` marker, else None."""
+    m = re.search(r"Last refreshed:\s*\[?\[?(\d{4})-(\d{2})-(\d{2})", text, re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return date(int(m[1]), int(m[2]), int(m[3]))
+    except ValueError:
+        return None
 
 
 def read_cwd(stdin_text: str) -> str:

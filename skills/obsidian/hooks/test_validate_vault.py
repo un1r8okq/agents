@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -611,3 +612,153 @@ def test_required_key_matrix_matches_skill_md():
     assert "client:" in overview and "status:" in overview
     for v in vv.ENUM_FIELDS["status"]:
         assert v in overview, f"status enum value {v!r} missing from SKILL.md"
+
+
+def test_daily_date_parses_filename(tmp_path):
+    assert vv._daily_date(tmp_path / "2026-06-08.md") == date(2026, 6, 8)
+    assert vv._daily_date(tmp_path / "template.md") is None
+    assert vv._daily_date(tmp_path / "2026-13-99.md") is None
+
+
+def test_recent_daily_files_window(tmp_path):
+    (tmp_path / "daily").mkdir()
+    for d in ("2026-05-01", "2026-06-05", "2026-06-09"):
+        (tmp_path / "daily" / f"{d}.md").write_text("x")
+    (tmp_path / "daily" / "template.md").write_text("x")
+    got = {p.name for p in vv._recent_daily_files(tmp_path, 14, date(2026, 6, 9))}
+    assert got == {"2026-06-05.md", "2026-06-09.md"}
+
+
+def test_wikilink_targets_handles_alias_and_heading():
+    t = "see [[Gagan Dhaliwal|Gagan]] and [[DSO2]] and [[Note#Heading]] and [[2026-06-08]]"
+    assert vv._wikilink_targets(t) == {"Gagan Dhaliwal", "DSO2", "Note", "2026-06-08"}
+
+
+def test_max_date_ref():
+    assert vv._max_date_ref("a [[2026-05-29]] b [[2026-06-08-ww-standup]] c") == date(2026, 6, 8)
+    assert vv._max_date_ref("no dates here") is None
+
+
+def test_last_refreshed_parses_marker():
+    assert vv._last_refreshed("*Last refreshed: [[2026-06-09]]. Next refresh: next decant.*") == date(2026, 6, 9)
+    assert vv._last_refreshed("Last refreshed: 2026-06-05") == date(2026, 6, 5)
+    assert vv._last_refreshed("no marker") is None
+
+
+def _make_person(tmp_path, name, body):
+    (tmp_path / "people").mkdir(exist_ok=True)
+    (tmp_path / "people" / f"{name}.md").write_text(body)
+
+
+def _make_daily(tmp_path, d, body):
+    (tmp_path / "daily").mkdir(exist_ok=True)
+    (tmp_path / "daily" / f"{d}.md").write_text(body)
+
+
+def test_find_stale_person_notes_flags_lagging_note(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-04]]\n")
+    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
+
+
+def test_find_stale_person_notes_fresh_note_not_flagged(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nupdated [[2026-06-08]]\n")
+    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_no_date_ref_skipped(tmp_path):
+    _make_person(tmp_path, "Leon", "# Summary\nno dates in this note\n")
+    _make_daily(tmp_path, "2026-06-08", "chat with [[Leon]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_old_mention_outside_window(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-01]]\n")
+    _make_daily(tmp_path, "2026-05-01", "old standup with [[Gagan Dhaliwal]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_takes_latest_mention(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-06]]\n")
+    _make_daily(tmp_path, "2026-06-05", "early [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, "2026-06-08", "later [[Gagan Dhaliwal]]\n")
+    # note date-ref is 06-06; if MAX mention (06-08) is used -> stale; if MIN (06-05) -> fresh
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
+
+
+def _make_context(tmp_path, engagement, refreshed):
+    d = tmp_path / "engagements" / engagement
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "context.md").write_text(f"---\ndescription: ctx\n---\n*Last refreshed: [[{refreshed}]].*\n")
+
+
+def test_find_stale_context_flags_lagging(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == [("DSO2", "2026-06-05", "2026-06-08")]
+
+
+def test_find_stale_context_not_flagged_when_daily_not_decanted(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "raw notes re [[DSO2]] (no summary heading)\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_not_flagged_when_engagement_not_mentioned(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nunrelated day, no engagement link\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_not_flagged_when_up_to_date(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-09")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_skips_when_no_marker(tmp_path):
+    d = tmp_path / "engagements" / "DSO2"
+    d.mkdir(parents=True)
+    (d / "context.md").write_text("---\ndescription: ctx\n---\nno refresh marker here\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_format_report_includes_freshness(tmp_path):
+    report = vv.format_report(
+        [], [], tmp_path,
+        stale_people=["Gagan Dhaliwal", "Leon"],
+        stale_context=[("DSO2", "2026-06-05", "2026-06-08")],
+    )
+    assert "consider refresh-person: Gagan Dhaliwal, Leon" in report
+    assert "Stale engagement context: DSO2 (last refreshed 2026-06-05; 2026-06-08 decant mentions it)" in report
+
+
+def test_format_report_freshness_caps_at_15(tmp_path):
+    people = [f"P{i:02d}" for i in range(20)]
+    report = vv.format_report([], [], tmp_path, stale_people=people)
+    assert "+5 more" in report
+
+
+def test_format_report_empty_with_freshness_empty(tmp_path):
+    assert vv.format_report([], [], tmp_path, stale_people=[], stale_context=[]) == ""
+
+
+def test_hook_reports_stale_person(tmp_path):
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-04]]\n")
+    _make_daily(tmp_path, date.today().isoformat(), "standup with [[Gagan Dhaliwal]]\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "consider refresh-person: Gagan Dhaliwal" in r.stdout
+
+
+def test_hook_reports_stale_context(tmp_path):
+    d = tmp_path / "engagements" / "DSO2"
+    d.mkdir(parents=True)
+    (d / "context.md").write_text("---\ndescription: ctx\n---\n*Last refreshed: [[2026-01-01]].*\n")
+    # a decanted daily dated today (> last refreshed) mentioning the engagement
+    _make_daily(tmp_path, date.today().isoformat(), "# Summary\nstandup re [[DSO2]]\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Stale engagement context: DSO2" in r.stdout

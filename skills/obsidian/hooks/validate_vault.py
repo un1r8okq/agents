@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+from datetime import date, timedelta
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -196,6 +197,135 @@ def find_invalid_enum_values(vault: Path) -> list[tuple[Path, str, str]]:
     return found
 
 
+def _daily_date(path: Path) -> date | None:
+    """Parse a YYYY-MM-DD date from a daily-note filename stem, else None."""
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", path.stem)
+    if not m:
+        return None
+    try:
+        return date(int(m[1]), int(m[2]), int(m[3]))
+    except ValueError:
+        return None
+
+
+def _recent_daily_files(vault: Path, days: int, today: date) -> list[Path]:
+    """Return daily/YYYY-MM-DD.md files whose date is in [today-days, today]."""
+    cutoff = today - timedelta(days=days)
+    out = []
+    for path in (vault / "daily").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+        d = _daily_date(path)
+        if d is not None and cutoff <= d <= today:
+            out.append(path)
+    return sorted(out)
+
+
+def _wikilink_targets(text: str) -> set[str]:
+    """Return the set of [[Target]] targets (text before any | or #), stripped."""
+    targets = set()
+    for m in re.finditer(r"\[\[([^\]]+)\]\]", text):
+        target = re.split(r"[|#]", m.group(1), maxsplit=1)[0].strip()
+        if target:
+            targets.add(target)
+    return targets
+
+
+def _max_date_ref(text: str) -> date | None:
+    """Return the newest [[YYYY-MM-DD...]] date referenced in text, else None.
+
+    Matches both pure date-links ([[2026-06-08]]) and date-prefixed detail-note
+    links ([[2026-06-08-ww-standup]]).
+    """
+    dates = []
+    for m in re.finditer(r"\[\[(\d{4})-(\d{2})-(\d{2})", text):
+        try:
+            dates.append(date(int(m[1]), int(m[2]), int(m[3])))
+        except ValueError:
+            pass
+    return max(dates) if dates else None
+
+
+def _last_refreshed(text: str) -> date | None:
+    """Parse the date from a `Last refreshed: [[YYYY-MM-DD]]` marker, else None."""
+    m = re.search(r"Last refreshed:\s*\[?\[?(\d{4})-(\d{2})-(\d{2})", text, re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return date(int(m[1]), int(m[2]), int(m[3]))
+    except ValueError:
+        return None
+
+
+def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[str]:
+    """Return person stems discussed in a recent daily more recently than their newest dated entry.
+
+    Relies on the full-name wikilink convention: a daily must link the person by
+    their note stem (`[[Gagan Dhaliwal]]` or `[[Gagan Dhaliwal|Gagan]]`); a bare
+    alias `[[Gagan]]` with no matching people/ file is not counted.
+    """
+    people_dir = vault / "people"
+    if not people_dir.is_dir():
+        return []
+    stems = {p.stem for p in people_dir.glob("*.md")}
+    if not stems:
+        return []
+    latest_mention: dict[str, date] = {}
+    for daily in _recent_daily_files(vault, days, today):
+        d = _daily_date(daily)
+        if d is None:  # _recent_daily_files already filters these out; defensive
+            continue
+        try:
+            text = daily.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for target in _wikilink_targets(text):
+            if target in stems and (target not in latest_mention or d > latest_mention[target]):
+                latest_mention[target] = d
+    stale = []
+    for person, mention_date in latest_mention.items():
+        try:
+            note_text = (people_dir / f"{person}.md").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        note_date = _max_date_ref(note_text)
+        if note_date is not None and mention_date > note_date:
+            stale.append(person)
+    return sorted(stale)
+
+
+def find_stale_context(vault: Path, today: date) -> list[tuple[str, str, str]]:
+    """Return (engagement, last_refreshed, trigger_date) where context.md lags a newer decant that mentions it."""
+    eng_dir = vault / "engagements"
+    if not eng_dir.is_dir():
+        return []
+    out = []
+    daily_dir = vault / "daily"
+    for ctx in sorted(eng_dir.glob("*/context.md")):
+        engagement = ctx.parent.name
+        try:
+            ctx_text = ctx.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        refreshed = _last_refreshed(ctx_text)
+        if refreshed is None:
+            continue
+        trigger: date | None = None
+        for daily in daily_dir.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+            dd = _daily_date(daily)
+            if dd is None or dd <= refreshed or dd > today:
+                continue
+            try:
+                dtext = daily.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if not re.search(r"^# Summary", dtext, re.MULTILINE):
+                continue
+            if engagement in _wikilink_targets(dtext) and (trigger is None or dd > trigger):
+                trigger = dd
+        if trigger is not None:
+            out.append((engagement, refreshed.isoformat(), trigger.isoformat()))
+    return sorted(out)
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:
@@ -265,9 +395,11 @@ def format_report(
     desc_links: list[Path] = (),
     missing_keys: list[tuple[Path, list[str]]] = (),
     bad_enums: list[tuple[Path, str, str]] = (),
+    stale_people: list[str] = (),
+    stale_context: list[tuple[str, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums):
+    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums or stale_people or stale_context):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -298,6 +430,18 @@ def format_report(
         rel = p.relative_to(vault)
         allowed = ", ".join(sorted(ENUM_FIELDS[field]))
         lines.append(f'- Invalid {field} value: {rel} ("{value}") — must be one of {allowed}.')
+    if stale_people:
+        shown = ", ".join(stale_people[:15])
+        more = f" (+{len(stale_people) - 15} more)" if len(stale_people) > 15 else ""
+        lines.append(
+            "- Stale person notes (discussed more recently than their newest dated entry) — "
+            f"consider refresh-person: {shown}{more}."
+        )
+    for engagement, refreshed, trigger in stale_context:
+        lines.append(
+            f"- Stale engagement context: {engagement} (last refreshed {refreshed}; "
+            f"{trigger} decant mentions it) — re-run the context refresh."
+        )
     lines.append("Mention these to the user and offer to fix; do NOT auto-edit the vault.")
     return "\n".join(lines)
 
@@ -380,6 +524,7 @@ def main() -> int:
             _debug("cwd outside vault/skills-repo — exiting 0 (silent)")
             return 0
         start = time.perf_counter()
+        today = date.today()
         report = format_report(
             _timed("find_empty_notes", find_empty_notes, vault),
             _timed("find_duplicate_basenames", find_duplicate_basenames, vault),
@@ -389,6 +534,8 @@ def main() -> int:
             desc_links=_timed("find_wikilinks_in_description", find_wikilinks_in_description, vault),
             missing_keys=_timed("find_missing_required_keys", find_missing_required_keys, vault),
             bad_enums=_timed("find_invalid_enum_values", find_invalid_enum_values, vault),
+            stale_people=_timed("find_stale_person_notes", find_stale_person_notes, vault, today),
+            stale_context=_timed("find_stale_context", find_stale_context, vault, today),
         )
         _debug(
             f"scan complete in {(time.perf_counter() - start) * 1000:.0f}ms — "

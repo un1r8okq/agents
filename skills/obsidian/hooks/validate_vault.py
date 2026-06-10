@@ -292,6 +292,40 @@ def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[st
     return sorted(stale)
 
 
+def find_stale_context(vault: Path, today: date) -> list[tuple[str, str, str]]:
+    """Return (engagement, last_refreshed, trigger_date) where context.md lags a newer decant that mentions it."""
+    eng_dir = vault / "engagements"
+    if not eng_dir.is_dir():
+        return []
+    out = []
+    daily_dir = vault / "daily"
+    for ctx in sorted(eng_dir.glob("*/context.md")):
+        engagement = ctx.parent.name
+        try:
+            ctx_text = ctx.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        refreshed = _last_refreshed(ctx_text)
+        if refreshed is None:
+            continue
+        trigger: date | None = None
+        for daily in daily_dir.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+            dd = _daily_date(daily)
+            if dd is None or dd <= refreshed or dd > today:
+                continue
+            try:
+                dtext = daily.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if not re.search(r"^# Summary", dtext, re.MULTILINE):
+                continue
+            if engagement in _wikilink_targets(dtext) and (trigger is None or dd > trigger):
+                trigger = dd
+        if trigger is not None:
+            out.append((engagement, refreshed.isoformat(), trigger.isoformat()))
+    return sorted(out)
+
+
 def read_cwd(stdin_text: str) -> str:
     """Extract `cwd` from the hook's stdin JSON; fall back to the process cwd on empty/invalid/non-object input."""
     if stdin_text:

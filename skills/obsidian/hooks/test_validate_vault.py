@@ -685,3 +685,41 @@ def test_find_stale_person_notes_takes_latest_mention(tmp_path):
     _make_daily(tmp_path, "2026-06-08", "later [[Gagan Dhaliwal]]\n")
     # note date-ref is 06-06; if MAX mention (06-08) is used -> stale; if MIN (06-05) -> fresh
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
+
+
+def _make_context(tmp_path, engagement, refreshed):
+    d = tmp_path / "engagements" / engagement
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "context.md").write_text(f"---\ndescription: ctx\n---\n*Last refreshed: [[{refreshed}]].*\n")
+
+
+def test_find_stale_context_flags_lagging(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == [("DSO2", "2026-06-05", "2026-06-08")]
+
+
+def test_find_stale_context_not_flagged_when_daily_not_decanted(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "raw notes re [[DSO2]] (no summary heading)\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_not_flagged_when_engagement_not_mentioned(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-05")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nunrelated day, no engagement link\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_not_flagged_when_up_to_date(tmp_path):
+    _make_context(tmp_path, "DSO2", "2026-06-09")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_context_skips_when_no_marker(tmp_path):
+    d = tmp_path / "engagements" / "DSO2"
+    d.mkdir(parents=True)
+    (d / "context.md").write_text("---\ndescription: ctx\n---\nno refresh marker here\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup re [[DSO2]]\n")
+    assert vv.find_stale_context(tmp_path, date(2026, 6, 9)) == []

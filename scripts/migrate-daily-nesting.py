@@ -15,7 +15,7 @@ import sys
 import tarfile
 from pathlib import Path
 
-DATE_PREFIX = re.compile(r"(\d{4})-(\d{2})-\d{2}")
+DATE_PREFIX = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 # Directories whose dated *.md files get nested. Each is relative to the vault.
 SCAN_DIRS = ("daily", "daily/detail", "daily/transcripts")
 
@@ -26,7 +26,7 @@ def _month_of(name: str) -> str | None:
     if not m:
         return None
     try:
-        datetime.date(int(m[1]), int(m[2]), 1)
+        datetime.date(int(m[1]), int(m[2]), int(m[3]))
     except ValueError:
         return None
     return f"{m[1]}-{m[2]}"
@@ -67,6 +67,7 @@ def unparseable(vault: Path) -> list[Path]:
 
 
 def apply_moves(moves: list[tuple[Path, Path]]) -> None:
+    """Create month subdirs and rename each (src, dst) pair; raises FileExistsError on collision."""
     for src, dst in moves:
         dst.parent.mkdir(parents=True, exist_ok=True)
         if dst.exists():
@@ -75,8 +76,8 @@ def apply_moves(moves: list[tuple[Path, Path]]) -> None:
 
 
 def backup(vault: Path) -> Path:
-    """Tar the daily/ tree to a timestamped archive OUTSIDE the vault."""
-    stamp = datetime.date.today().isoformat()
+    """Tar the daily/ tree to a timestamped archive OUTSIDE the vault. Returns the archive path."""
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
     archive = vault.parent / f"{vault.name}-daily-bak-{stamp}.tar.gz"
     with tarfile.open(archive, "w:gz") as tar:
         tar.add(vault / "daily", arcname="daily")

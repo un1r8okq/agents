@@ -1,4 +1,5 @@
 import importlib.util
+import tarfile
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
@@ -53,3 +54,26 @@ def test_apply_moves_files_and_verifies(tmp_path):
     assert (v / "daily" / "template.md").exists()  # untouched
     # idempotent: re-planning after apply yields nothing
     assert mdn.plan_moves(v) == []
+
+
+def test_backup_creates_archive_containing_daily(tmp_path):
+    v = _fixture(tmp_path)
+    arc = mdn.backup(v)
+    assert arc.exists()
+    assert arc.parent == v.parent  # archive lives OUTSIDE the vault
+    with tarfile.open(arc) as t:
+        names = t.getnames()
+    assert any(n.startswith("daily/") for n in names)
+
+
+def test_unparseable_reports_non_dated_non_template(tmp_path):
+    v = _fixture(tmp_path)
+    (v / "daily" / "notes.md").write_text("x\n")
+    names = [p.name for p in mdn.unparseable(v)]
+    assert "notes.md" in names
+    assert "template.md" not in names
+
+
+def test_month_of_rejects_impossible_date():
+    assert mdn._month_of("2026-02-30-x.md") is None
+    assert mdn._month_of("2026-05-01-x.md") == "2026-05"

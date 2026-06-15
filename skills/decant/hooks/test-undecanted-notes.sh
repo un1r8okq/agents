@@ -71,7 +71,7 @@ rm -rf "$empty_vault"
 
 # --- Test 5: month-nested layout (YYYY-MM/YYYY-MM-DD.md) ---
 nested_vault="$(mktemp -d)"; mkdir -p "$nested_vault/daily"
-IN_NESTED="$(d_ago 3)"
+IN_NESTED="$(d_ago 5)"
 mkdir -p "$nested_vault/daily/${IN_NESTED:0:7}"
 printf '# Notes\n- nested undecanted\n' > "$nested_vault/daily/${IN_NESTED:0:7}/$IN_NESTED.md"
 out="$(run_hook "$nested_vault" "$nested_vault")"

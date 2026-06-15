@@ -1,6 +1,6 @@
 ---
 name: slack-thread
-description: Extract a pasted Slack thread into a structured Obsidian table at $OBSIDIAN_VAULT/daily/detail/, and add a consultant-lens summary bullet to the daily note. Use when the user pastes Slack thread text and asks to extract, save, capture, transcribe, or format a Slack thread for their knowledgebase.
+description: Extract a pasted Slack thread into a structured Obsidian table at $OBSIDIAN_VAULT/daily/detail/YYYY-MM/, and add a consultant-lens summary bullet to the daily note. Use when the user pastes Slack thread text and asks to extract, save, capture, transcribe, or format a Slack thread for their knowledgebase.
 ---
 
 # slack-thread

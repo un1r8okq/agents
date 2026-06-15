@@ -6,6 +6,10 @@ The user always wants you to:
 - Treat questions like "should we X?" or "can we Y?" as requests for analysis, not authorisation. Wait for an explicit imperative ("do it", "apply", "go ahead") before making changes. I'm a Kiwi and often phrase proposals as open questions.
 - Ask questions via the `AskUserQuestion` tool (the multi-choice picker) rather than inline in chat — even when the natural answer is free-text written prose. Provide 2–4 plausible options; the user can always pick "Other" and type a free-form reply. Batch multiple questions into a single AskUserQuestion call.
 
+## Network access and 403s
+
+The user typically runs Claude Code inside of a [Docker Sandbox](https://docs.docker.com/ai/sandboxes.md) with default deny egress controls. You will get an HTTP 403 if a hostname is not yet on the allow list. Ask the user to allow a host if this happens instead of just moving on.
+
 ## Persisting rules and durable guidance
 
 When the user gives durable guidance about how I should work — coaching, behavioural rules, do/don't preferences — **update the relevant skill (`/c/dev/agents/skills/<name>/SKILL.md`) or `/c/dev/agents/AGENTS.md` file**. Do not write the guidance into the auto-memory system. Skills and `AGENTS.md` are the source of truth for how I work; auto-memory is for ephemeral session context only.

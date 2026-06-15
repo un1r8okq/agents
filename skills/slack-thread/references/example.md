@@ -38,7 +38,7 @@ The update went out last Tuesday but I haven't trained the new pups on it. Can d
 
 ## Proposed (and confirmed) artefacts
 
-**Filename**: `daily/detail/2026-04-27-pup-pup-boogie-demo-concerns.md`
+**Filename**: `daily/detail/2026-04/2026-04-27-pup-pup-boogie-demo-concerns.md`
 
 **H1**: `# Concerns about the [[Pup Pup Boogie]] demo for Saturday`
 
@@ -68,7 +68,7 @@ On [[2026-04-27]] I flagged concerns about Saturday's [[Pup Pup Boogie]] demo in
 
 ## Daily-note edit
 
-Appended to `# Notes` in `daily/2026-04-27.md`:
+Appended to `# Notes` in `daily/2026-04/2026-04-27.md`:
 
 ```markdown
 - Flagged risk that Saturday's [[Pup Pup Boogie]] demo could fail in front of [[Mayor Goodway]]'s school class — new sequence not trained, [[Lookout]] comms still on old [[PupPad]] config. See [[2026-04-27-pup-pup-boogie-demo-concerns]].
@@ -76,4 +76,4 @@ Appended to `# Notes` in `daily/2026-04-27.md`:
 
 ## Report back to user
 
-> Wrote `daily/detail/2026-04-27-pup-pup-boogie-demo-concerns.md` and appended a summary bullet to `daily/2026-04-27.md`. Reacts column is empty for you to fill. No unresolved mentions; no unrecognised emoji.
+> Wrote `daily/detail/2026-04/2026-04-27-pup-pup-boogie-demo-concerns.md` and appended a summary bullet to `daily/2026-04/2026-04-27.md`. Reacts column is empty for you to fill. No unresolved mentions; no unrecognised emoji.

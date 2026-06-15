@@ -18,9 +18,10 @@ Key principles:
 
 | Path | Purpose |
 | --- | --- |
-| `daily/YYYY-MM-DD.md` | Daily notes — schedule + free-form notes |
-| `daily/detail/YYYY-MM-DD-topic.md` | Overflow or multi-person session notes. Verbatim. |
-| `daily/transcripts/` | Raw transcripts (Google Meet exports etc.) |
+| `daily/YYYY-MM/YYYY-MM-DD.md` | Daily notes — schedule + free-form notes (nested by month) |
+| `daily/detail/YYYY-MM/YYYY-MM-DD-topic.md` | Overflow or multi-person session notes. Verbatim. |
+| `daily/transcripts/YYYY-MM/` | Raw transcripts after processing (Google Meet exports etc.) |
+| `inbox/` | Drop zone (vault root) for files awaiting processing — raw transcripts, screenshots, exports. Transient; skills move processed output into the dated tree and clear the file. |
 | `engagements/<Engagement>/` | Per-engagement directory (see below) |
 | `engagements/<Engagement>/<Engagement>.md` | Engagement overview — thesis, recommendations, background |
 | `engagements/<Engagement>/context.md` | Current week's priorities, concerns, risks (refreshed every daily decant) |
@@ -150,7 +151,7 @@ Genuinely new pattern *frames* (not just new instances) may warrant a named sub-
 
 ### Daily notes
 
-Files in `daily/YYYY-MM-DD.md`.
+Files in `daily/YYYY-MM/YYYY-MM-DD.md` (nested by month; `template.md` stays at the `daily/` root).
 
 **Frontmatter:** none. Daily notes carry no frontmatter by default. The `update-daily-schedule.py` hook maintains the `## Schedule` table from Google Calendar regardless. An optional `location: office | client` may be added by hand to make the schedule table include a Location column; a missing or `home` location omits it.
 
@@ -170,7 +171,7 @@ Replace the extracted section with a 1–2 sentence summary bullet + wikilink to
 
 ### Detail notes
 
-Files in `daily/detail/YYYY-MM-DD-topic-name.md`. Date prefix ties the note to its parent daily.
+Files in `daily/detail/YYYY-MM/YYYY-MM-DD-topic-name.md` (nested by month). Date prefix ties the note to its parent daily.
 
 **Required frontmatter:** `description:`.
 

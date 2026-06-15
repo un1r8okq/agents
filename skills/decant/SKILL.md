@@ -13,7 +13,7 @@ Eight phases. **Phases 1 and 4 must each be issued as a single parallel tool bat
 
 Issue these reads in a single set of parallel tool calls:
 
-- `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md` (the target daily note)
+- `$OBSIDIAN_VAULT/daily/YYYY-MM/YYYY-MM-DD.md` (the target daily note)
 - `$OBSIDIAN_VAULT/todo.md`
 - `^description:` grep across each of `people/`, `orgs/`, `engagements/`, `glossary/` (one Grep call per directory; recursive so it picks up engagement-scoped glossary and companion files)
 - For each engagement directory referenced in the daily note (e.g. `[[DSO2]]`), read its `context.md` (e.g. `$OBSIDIAN_VAULT/engagements/DSO2/context.md`)
@@ -32,8 +32,8 @@ If the daily note already contains a `# Summary`, it has been decanted — confi
 Plan the whole run in one pass before issuing any writes:
 
 1. **Wikilinks to add.** Entity mentions in the daily note that are unlinked or only linked once.
-2. **Sections to split out.** Extract any `##` subsection in `# Notes` to `daily/detail/YYYY-MM-DD-topic-name.md` if EITHER (a) it exceeds ~20 lines, OR (b) it captures an event involving **3+ vault people** — multi-person events otherwise propagate the same inline content across multiple person notes at entity-edit time. Plan the verbatim detail content and the bullet that will replace it (preserve existing reference bullets verbatim; only add a new analytical bullet where none exists). Detail notes need `description:` frontmatter and a `Present:` wikilinked attendee list.
-3. **Image renames.** Match images in `daily/` against the daily note (e.g. `./daily/20260101 Screenshot.png` referenced by `2026-01-01.md` → `daily/2026-01-01-org-chart.png`).
+2. **Sections to split out.** Extract any `##` subsection in `# Notes` to `daily/detail/YYYY-MM/YYYY-MM-DD-topic-name.md` if EITHER (a) it exceeds ~20 lines, OR (b) it captures an event involving **3+ vault people** — multi-person events otherwise propagate the same inline content across multiple person notes at entity-edit time. Plan the verbatim detail content and the bullet that will replace it (preserve existing reference bullets verbatim; only add a new analytical bullet where none exists). Detail notes need `description:` frontmatter and a `Present:` wikilinked attendee list.
+3. **Image renames.** Match images in `daily/` against the daily note (e.g. `./daily/20260101 Screenshot.png` referenced by `2026-01-01.md` → `daily/2026-01/2026-01-01-org-chart.png`).
 4. **Extractions** per the map below.
 5. **Todo updates.** Plan items to *remove* (completed; if durable context, move to the relevant note first) — removals are applied automatically since they reduce bloat. For *additions* (new actions surfaced), **do not plan to write them directly** — collect them as a proposal list for the user to approve in Phase 7. Never add a todo silently.
 6. **Follow-up questions** for ambiguities or judgement calls that block extraction.
@@ -46,7 +46,7 @@ If you have follow-up questions, batch them into a single AskUserQuestion. **Don
 
 Issue as one parallel batch:
 
-- **Detail notes.** Create each `daily/detail/YYYY-MM-DD-*.md` with verbatim content. **Never summarise or reformat the body.** Required frontmatter: `description:` (plain text — no `[[wikilinks]]`).
+- **Detail notes.** Create each `daily/detail/YYYY-MM/YYYY-MM-DD-*.md` with verbatim content. **Never summarise or reformat the body.** Required frontmatter: `description:` (plain text — no `[[wikilinks]]`).
 - **New entity stubs** (people / orgs / glossary entries). Required frontmatter per `meta/conventions/frontmatter.md`. For new *people* stubs, judge whether high-value (key stakeholder, technical/practice lead, recurring contact, framework critic, named decision-maker) — if so, **add it to the Phase 7 todo-proposal list** (don't write it now): `- [ ] Pull LinkedIn background for [[Name]] via the background skill.` Skip for one-off mentions.
 - **Existing entity edits** (engagement / org / person notes). Each is a different file → fully parallel. Cite source: `Source: [[YYYY-MM-DD]]`.
   - **Person notes follow the durable-portrait shape** (canonical: `meta/conventions/people-notes.md`). When updating an existing person note for a session/meeting:

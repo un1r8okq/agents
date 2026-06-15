@@ -58,9 +58,11 @@ def test_apply_moves_files_and_verifies(tmp_path):
 
 def test_backup_creates_archive_containing_daily(tmp_path):
     v = _fixture(tmp_path)
-    arc = mdn.backup(v)
+    backup_dir = tmp_path / "backups"  # outside the vault
+    arc = mdn.backup(v, backup_dir)
     assert arc.exists()
-    assert arc.parent == v.parent  # archive lives OUTSIDE the vault
+    assert arc.parent == backup_dir  # archive lives OUTSIDE the vault
+    assert v not in arc.parents  # never inside the vault tree
     with tarfile.open(arc) as t:
         names = t.getnames()
     assert any(n.startswith("daily/") for n in names)

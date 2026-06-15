@@ -75,10 +75,12 @@ def apply_moves(moves: list[tuple[Path, Path]]) -> None:
         src.rename(dst)
 
 
-def backup(vault: Path) -> Path:
-    """Tar the daily/ tree to a timestamped archive OUTSIDE the vault. Returns the archive path."""
+def backup(vault: Path, backup_dir: Path) -> Path:
+    """Tar the daily/ tree to a timestamped archive in backup_dir (which must be
+    OUTSIDE the indexed vault and writable). Returns the archive path."""
+    backup_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    archive = vault.parent / f"{vault.name}-daily-bak-{stamp}.tar.gz"
+    archive = backup_dir / f"{vault.name}-daily-bak-{stamp}.tar.gz"
     with tarfile.open(archive, "w:gz") as tar:
         tar.add(vault / "daily", arcname="daily")
     return archive
@@ -88,6 +90,11 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="perform moves (default: dry-run)")
     ap.add_argument("--vault", default=os.environ.get("OBSIDIAN_VAULT"))
+    ap.add_argument(
+        "--backup-dir",
+        default=str(Path.home()),
+        help="where to write the pre-migration backup tarball (must be outside the vault; default: home dir)",
+    )
     args = ap.parse_args(argv)
     if not args.vault:
         print("OBSIDIAN_VAULT not set and --vault not given", file=sys.stderr)
@@ -112,7 +119,7 @@ def main(argv=None) -> int:
         return 0
 
     before = sum(1 for _ in (vault / "daily").rglob("*.md"))
-    archive = backup(vault)
+    archive = backup(vault, Path(args.backup_dir))
     print(f"\nBackup written: {archive}")
     apply_moves(moves)
     after = sum(1 for _ in (vault / "daily").rglob("*.md"))

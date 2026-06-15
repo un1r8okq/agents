@@ -69,6 +69,15 @@ out="$(run_hook "$empty_vault" "$empty_vault")"
 [ -z "$out" ] && pass "silent when nothing qualifies" || fail "expected silence, got: $out"
 rm -rf "$empty_vault"
 
+# --- Test 5: month-nested layout (YYYY-MM/YYYY-MM-DD.md) ---
+nested_vault="$(mktemp -d)"; mkdir -p "$nested_vault/daily"
+IN_NESTED="$(d_ago 3)"
+mkdir -p "$nested_vault/daily/${IN_NESTED:0:7}"
+printf '# Notes\n- nested undecanted\n' > "$nested_vault/daily/${IN_NESTED:0:7}/$IN_NESTED.md"
+out="$(run_hook "$nested_vault" "$nested_vault")"
+case "$out" in *"$IN_NESTED"*) pass "detects month-nested undecanted note ($IN_NESTED)";; *) fail "missed month-nested note $IN_NESTED -- got: $out";; esac
+rm -rf "$nested_vault"
+
 # --- Cleanup + result ---
 rm -rf "$vault"
 if [ "$fails" -eq 0 ]; then echo "All tests passed."; exit 0; else echo "$fails test(s) failed."; exit 1; fi

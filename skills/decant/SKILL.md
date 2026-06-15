@@ -33,7 +33,7 @@ Plan the whole run in one pass before issuing any writes:
 
 1. **Wikilinks to add.** Entity mentions in the daily note that are unlinked or only linked once.
 2. **Sections to split out.** Extract any `##` subsection in `# Notes` to `daily/detail/YYYY-MM/YYYY-MM-DD-topic-name.md` if EITHER (a) it exceeds ~20 lines, OR (b) it captures an event involving **3+ vault people** — multi-person events otherwise propagate the same inline content across multiple person notes at entity-edit time. Plan the verbatim detail content and the bullet that will replace it (preserve existing reference bullets verbatim; only add a new analytical bullet where none exists). Detail notes need `description:` frontmatter and a `Present:` wikilinked attendee list.
-3. **Image renames.** Match images in `daily/` against the daily note (e.g. `./daily/20260101 Screenshot.png` referenced by `2026-01-01.md` → `daily/2026-01/2026-01-01-org-chart.png`).
+3. **Image renames.** Match images in `daily/` against the daily note (e.g. `./daily/20260101 Screenshot.png` referenced by `daily/2026-01/2026-01-01.md` → `daily/2026-01/2026-01-01-org-chart.png`).
 4. **Extractions** per the map below.
 5. **Todo updates.** Plan items to *remove* (completed; if durable context, move to the relevant note first) — removals are applied automatically since they reduce bloat. For *additions* (new actions surfaced), **do not plan to write them directly** — collect them as a proposal list for the user to approve in Phase 7. Never add a todo silently.
 6. **Follow-up questions** for ambiguities or judgement calls that block extraction.

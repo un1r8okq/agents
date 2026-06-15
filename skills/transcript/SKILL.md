@@ -49,7 +49,7 @@ Then normalise each discovered file exactly as a raw export below (resolve date,
 
 1. **Resolve the date** — see date resolution below.
 2. Match the meeting title against the recurring meetings table below. If matched, use the canonical slug. Otherwise derive a slug (kebab-case, max 6 words) from the title.
-3. Rename/move to `$OBSIDIAN_VAULT/daily/transcripts/YYYY-MM/YYYY-MM-DD-<slug>-transcript.md`. Create the `YYYY-MM/` month folder if it does not exist. Remove the raw file from `inbox/` after writing.
+3. Rename/move to `$OBSIDIAN_VAULT/daily/transcripts/YYYY-MM/YYYY-MM-DD-<slug>-transcript.md`. Create the `YYYY-MM/` month folder if it does not exist. If the raw file came from `inbox/`, remove it after writing.
 
 #### Date resolution
 

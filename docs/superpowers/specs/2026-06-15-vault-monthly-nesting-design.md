@@ -93,8 +93,10 @@ check (`rglob`) actively protects the basename-uniqueness invariant during migra
 `scripts/migrate-daily-nesting.py` (Python, matching the project), with safety appropriate
 to a non-git tree:
 
-1. **Backup**: copy the entire `daily/` tree to a timestamped sibling
-   (`daily.bak-YYYY-MM-DD/`) before any move.
+1. **Backup**: archive the entire `daily/` tree to a timestamped tarball **outside** the
+   vault (e.g. `<vault-parent>/vault-daily-bak-YYYY-MM-DD.tar.gz`) before any move. It must
+   be outside the indexed vault — an in-vault copy would duplicate every basename, breaking
+   Obsidian link resolution and tripping the duplicate-basename check.
 2. **Dry-run** (`--dry-run`, default on): print every planned `src → dst` move; make no
    changes. Require an explicit `--apply` to move.
 3. **Move**: for each dated `.md` under `daily/`, `daily/detail/`, `daily/transcripts/`,

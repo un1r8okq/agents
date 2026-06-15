@@ -783,8 +783,13 @@ def test_recent_daily_files_still_finds_flat(tmp_path):
     assert flat in found
 
 
+def test_daily_note_files_no_daily_dir(tmp_path):
+    # vault has no daily/ directory — yields nothing, does not raise
+    assert list(vv._daily_note_files(tmp_path)) == []
+
+
 def test_recent_daily_files_ignores_detail_and_transcripts(tmp_path):
-    # detail/transcripts live under daily/ but must not be treated as daily notes
+    # month-nested detail/transcripts live under daily/ but must not be treated as daily notes
     (tmp_path / "daily" / "detail" / "2026-06").mkdir(parents=True)
     (tmp_path / "daily" / "detail" / "2026-06" / "2026-06-10-topic.md").write_text("x\n")
     (tmp_path / "daily" / "transcripts" / "2026-06").mkdir(parents=True)

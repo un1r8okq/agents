@@ -19,9 +19,13 @@ from pathlib import Path
 
 
 def _iter_notes(vault: Path) -> Iterator[Path]:
-    """Yield *.md content files under vault, skipping dot-directories and README.md (conventional per-directory files, not wikilink targets)."""
+    """Yield *.md content files under vault, skipping dot-directories, the inbox/
+    staging area, and README.md (conventional per-directory files, not wikilink targets)."""
     for path in vault.rglob("*.md"):
-        if any(part.startswith(".") for part in path.relative_to(vault).parts):
+        rel = path.relative_to(vault)
+        if any(part.startswith(".") for part in rel.parts):
+            continue
+        if rel.parts and rel.parts[0] == "inbox":
             continue
         if path.name.lower() == "readme.md":
             continue
@@ -208,11 +212,26 @@ def _daily_date(path: Path) -> date | None:
         return None
 
 
+def _daily_note_files(vault: Path) -> Iterator[Path]:
+    """Yield daily-note files in either layout: flat (daily/YYYY-MM-DD.md) or
+    month-nested (daily/YYYY-MM/YYYY-MM-DD.md). The month-folder glob never
+    matches daily/detail/ or daily/transcripts/, so those stay excluded."""
+    daily = vault / "daily"
+    yield from daily.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md")
+    yield from daily.glob(
+        "[0-9][0-9][0-9][0-9]-[0-9][0-9]/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"
+    )
+
+
 def _recent_daily_files(vault: Path, days: int, today: date) -> list[Path]:
-    """Return daily/YYYY-MM-DD.md files whose date is in [today-days, today]."""
+    """Return daily-note files whose date is in [today-days, today].
+
+    Handles both flat (daily/YYYY-MM-DD.md) and month-nested
+    (daily/YYYY-MM/YYYY-MM-DD.md) layouts via _daily_note_files.
+    """
     cutoff = today - timedelta(days=days)
     out = []
-    for path in (vault / "daily").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+    for path in _daily_note_files(vault):
         d = _daily_date(path)
         if d is not None and cutoff <= d <= today:
             out.append(path)
@@ -298,7 +317,6 @@ def find_stale_context(vault: Path, today: date) -> list[tuple[str, str, str]]:
     if not eng_dir.is_dir():
         return []
     out = []
-    daily_dir = vault / "daily"
     for ctx in sorted(eng_dir.glob("*/context.md")):
         engagement = ctx.parent.name
         try:
@@ -309,7 +327,7 @@ def find_stale_context(vault: Path, today: date) -> list[tuple[str, str, str]]:
         if refreshed is None:
             continue
         trigger: date | None = None
-        for daily in daily_dir.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md"):
+        for daily in _daily_note_files(vault):
             dd = _daily_date(daily)
             if dd is None or dd <= refreshed or dd > today:
                 continue

@@ -762,3 +762,59 @@ def test_hook_reports_stale_context(tmp_path):
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "Stale engagement context: DSO2" in r.stdout
+
+
+def test_recent_daily_files_finds_month_nested(tmp_path):
+    daily = tmp_path / "daily" / "2026-06"
+    daily.mkdir(parents=True)
+    nested = daily / "2026-06-10.md"
+    nested.write_text("# Notes\n")
+    today = date(2026, 6, 12)
+    found = vv._recent_daily_files(tmp_path, days=14, today=today)
+    assert nested in found
+
+
+def test_recent_daily_files_still_finds_flat(tmp_path):
+    daily = tmp_path / "daily"
+    daily.mkdir()
+    flat = daily / "2026-06-10.md"
+    flat.write_text("# Notes\n")
+    found = vv._recent_daily_files(tmp_path, days=14, today=date(2026, 6, 12))
+    assert flat in found
+
+
+def test_recent_daily_files_ignores_detail_and_transcripts(tmp_path):
+    # detail/transcripts live under daily/ but must not be treated as daily notes
+    (tmp_path / "daily" / "detail" / "2026-06").mkdir(parents=True)
+    (tmp_path / "daily" / "detail" / "2026-06" / "2026-06-10-topic.md").write_text("x\n")
+    (tmp_path / "daily" / "transcripts" / "2026-06").mkdir(parents=True)
+    (tmp_path / "daily" / "transcripts" / "2026-06" / "2026-06-10-x-transcript.md").write_text("x\n")
+    found = vv._recent_daily_files(tmp_path, days=14, today=date(2026, 6, 12))
+    assert found == []
+
+
+def test_stale_context_finds_month_nested_trigger(tmp_path):
+    ctx = tmp_path / "engagements" / "Acme" / "context.md"
+    ctx.parent.mkdir(parents=True)
+    ctx.write_text("---\ndescription: x\n---\n*Last refreshed: [[2026-06-01]]*\n")
+    nested = tmp_path / "daily" / "2026-06" / "2026-06-09.md"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("# Summary\n- [[Acme]] talked\n")
+    out = vv.find_stale_context(tmp_path, today=date(2026, 6, 12))
+    assert ("Acme", "2026-06-01", "2026-06-09") in out
+
+
+def test_iter_notes_skips_inbox(tmp_path):
+    (tmp_path / "inbox").mkdir()
+    dropped = tmp_path / "inbox" / "raw-transcript.md"
+    dropped.write_text("")  # empty + no description — would normally be flagged
+    (tmp_path / "misc").mkdir()
+    (tmp_path / "misc" / "Real.md").write_text("content\n")
+    names = {p.name for p in vv._iter_notes(tmp_path)}
+    assert "raw-transcript.md" not in names
+    assert "Real.md" in names
+
+
+def test_detail_month_nested_still_requires_description(tmp_path):
+    rel = Path("daily") / "detail" / "2026-06" / "2026-06-10-topic.md"
+    assert vv._requires_description(rel) is True

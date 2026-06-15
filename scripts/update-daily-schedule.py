@@ -36,9 +36,15 @@ ENTITY_DIRS = ["people", "orgs", "glossary", "engagements"]
 WORKING_LOCATION_TITLES = {"home", "office", "working from home", "in office", "remote", "wfh", "wfo"}
 MIN_ALIAS_LEN = 2  # avoid pathological one-letter matches like "I"
 
+
+def daily_note_path(vault: Path, day: datetime.date) -> Path:
+    """Path to a daily note, nested by month: daily/YYYY-MM/YYYY-MM-DD.md."""
+    return vault / "daily" / day.strftime("%Y-%m") / f"{day.isoformat()}.md"
+
+
 today = datetime.date.today()
 daily_dir = VAULT_PATH / "daily"
-daily_path = daily_dir / f"{today.isoformat()}.md"
+daily_path = daily_note_path(VAULT_PATH, today)
 template_path = daily_dir / "template.md"
 
 
@@ -358,6 +364,7 @@ def main() -> int:
         return 0
 
     if not daily_path.exists():
+        daily_path.parent.mkdir(parents=True, exist_ok=True)
         if template_path.exists():
             shutil.copyfile(template_path, daily_path)
         else:

@@ -79,19 +79,28 @@ Apply the relevant section before any non-trivial write. These are the authorita
 - After meaningful edits (~10% body added or restructured, new heading, material new claims), reconsider whether `description:` still represents the file. Propose updated description before writing. Skip for trivial edits.
 - For person notes, prefer the `refresh-person` skill — it handles `# Summary` and `# Stated views` together and updates `description:` coherently.
 
+**`source:` (optional, any entity note).** A bare URL pointing at the canonical, durable home of the real-world asset the note describes — not a search result. Quote-wrapped plain URL, **not** a wikilink (a URL is not a vault entity): `source: "https://clearpoint.digital"`. By type:
+- `people/` → LinkedIn profile URL (the canonical identity)
+- `orgs/` → the org's primary website
+- `glossary/` → the authoritative spec/docs for the term or tool (e.g. DORA → `https://dora.dev`)
+- `engagements/<E>.md` → the project's canonical home (SOW, client workspace, or repo)
+- `misc/` → where the reference was distilled from
+
+Omit where there is no single canonical asset (daily notes, detail notes — their provenance is the day itself). Keep frontmatter to the **one** source an agent should follow blindly; put any secondary pointer in the body.
+
 **Required fields per directory:**
 
 | Directory | Required | Optional |
 | --- | --- | --- |
 | `daily/` | (none) | (none) — daily notes carry no frontmatter; an optional `location: office \| client` may be added by hand to surface a Location column in `## Schedule` |
 | `daily/detail/` | `description:` | |
-| `engagements/<Engagement>/<Engagement>.md` | `client:`, `description:`, `status:` (`active` \| `complete`) | |
+| `engagements/<Engagement>/<Engagement>.md` | `client:`, `description:`, `status:` (`active` \| `complete`) | `source:` |
 | `engagements/<Engagement>/{context,timeline,decisions,people}.md` | `description:` | |
-| `engagements/<Engagement>/glossary/` | `full:`, `description:` | |
-| `glossary/` | `full:`, `description:` | |
-| `misc/` | `description:` | |
-| `orgs/` | `relationship:` (`employer` \| `client` \| `partner` \| `vendor` \| `organisation`), `description:` | |
-| `people/` | `organisation:`, `role:`, `description:` | `joined:` (YYYY-MM-DD), `aliases:`, `mistranscriptions:` |
+| `engagements/<Engagement>/glossary/` | `full:`, `description:` | `source:` |
+| `glossary/` | `full:`, `description:` | `source:` |
+| `misc/` | `description:` | `source:` |
+| `orgs/` | `relationship:` (`employer` \| `client` \| `partner` \| `vendor` \| `organisation`), `description:` | `source:` |
+| `people/` | `organisation:`, `role:`, `description:` | `joined:` (YYYY-MM-DD), `aliases:`, `mistranscriptions:`, `source:` |
 
 **Wikilinks in frontmatter:** for entity fields (`organisation:`, `client:`), use full wikilink syntax — `organisation: "[[Adventure Bay Council]]"`. Quote-wrap to avoid YAML parsing issues.
 
@@ -116,13 +125,28 @@ Apply the relevant section before any non-trivial write. These are the authorita
 
 **Substring caution:** `replace_all` can corrupt substrings (e.g. replacing `Tim` hits `Time`, `sometimes`). Only use `replace_all` when the entity name is unambiguous; otherwise per-occurrence Edits.
 
+### Citations & provenance
+
+Two provenance mechanisms, chosen by where the fact came from:
+
+- **Internal provenance → wikilink the daily.** A fact sourced from your own notes cites its origin with a date wikilink: `Source: [[2026-06-16]]`. This is a graph edge, not a dead footnote — always prefer it for in-vault facts. (Already the `## Patterns` and `timeline.md` convention.)
+- **External provenance → markdown footnote.** A fact pulled from outside the vault (a published standard, vendor docs, a web figure) cites its source with a native markdown footnote, so the prose stays clean and sources collect at the foot of the note:
+
+```markdown
+[[DORA metrics]] correlate deploy frequency with org performance.[^dora]
+
+[^dora]: [DORA State of DevOps 2025](https://dora.dev/research/2025) — accessed 2026-06-16.
+```
+
+**Where it earns its keep:** `glossary/` and `misc/` (externally-derived reference content). Don't footnote in-vault facts — use the date wikilink. Rule of thumb: **wikilink for internal provenance, footnote for external.** Do not nest a `[[wikilink]]` inside the footnote's markdown link text.
+
 ### People notes
 
 Files in `people/<Name>.md`. One per person Will works with.
 
 **Required frontmatter:** `organisation:` (wikilinked), `role:`, `description:`.
 
-**Optional frontmatter:** `joined:`, `aliases:`, `mistranscriptions:`.
+**Optional frontmatter:** `joined:`, `aliases:`, `mistranscriptions:`, `source:` (LinkedIn profile URL — see Frontmatter § `source:`).
 
 **Section structure:**
 
@@ -210,7 +234,7 @@ Engagements live in a per-engagement **directory** at `engagements/<Engagement>/
 | `people.md` | Engagement-specific who's who roster (table form). |
 | `glossary/<term>.md` | Engagement-scoped terminology — project codenames, tier names, internal tools. Globally-applicable terms stay in top-level `glossary/`. |
 
-**Required frontmatter — main `<Engagement>.md`:** `client:` (wikilinked), `description:`, `status: active | complete`.
+**Required frontmatter — main `<Engagement>.md`:** `client:` (wikilinked), `description:`, `status: active | complete`. Optional `source:` — the project's canonical home (SOW, client workspace, or repo).
 **Required frontmatter — companion files (`context.md`, `timeline.md`, `decisions.md`, `people.md`):** `description:`.
 
 **Main `<Engagement>.md` structure:** durable strategic content — thesis, emerging recommendations, phase narrative, background context. **Not** the timeline or current-state content (those live in companion files).
@@ -244,6 +268,8 @@ Files in `orgs/<Org>.md`.
 
 **Required frontmatter:** `relationship: employer | client | partner | vendor | organisation`, `description:`. Use `organisation` for orgs with no commercial relationship to Will / ClearPoint — personal or community bodies (e.g. a club Will belongs to).
 
+**Optional frontmatter:** `source:` — the org's primary website (e.g. ClearPoint → `"https://clearpoint.digital"`).
+
 **Body:** lead with what the org does; note the relationship with Will / ClearPoint where relevant; link to engagements, people, and key projects.
 
 **When to create:** any organisation referenced from another vault entity, even if only as someone's employer — it's the link target that enables graph traversal.
@@ -254,7 +280,9 @@ Files in `glossary/<term>.md`.
 
 **Required frontmatter:** `full:` (expanded form; empty string if not an abbreviation), `description:`.
 
-**Body:** 1–3 sentence definition; 2–4 context bullets (key relationships, where used, who owns it); links to related entries, engagements, and people.
+**Optional frontmatter:** `source:` — the authoritative spec/docs for the term or tool.
+
+**Body:** 1–3 sentence definition; 2–4 context bullets (key relationships, where used, who owns it); links to related entries, engagements, and people. Cite externally-sourced definitions with a footnote (see Citations & provenance).
 
 **When to create:** abbreviations/acronyms used more than once; tools/standards relevant to ongoing engagements; terms-of-art with non-obvious meaning.
 
@@ -266,7 +294,9 @@ Files in `misc/<topic>.md`.
 
 **Required frontmatter:** `description:`.
 
-**When to use:** reference-shaped content not tied to a specific day; standalone topics that have outgrown a detail note; lookups, framings, or playbooks cited from other notes.
+**Optional frontmatter:** `source:` — where the reference was distilled from.
+
+**When to use:** reference-shaped content not tied to a specific day; standalone topics that have outgrown a detail note; lookups, framings, or playbooks cited from other notes. Cite externally-sourced facts with a footnote (see Citations & provenance).
 
 **Linking rule:** misc notes **must be linked from at least one other page** — they are not orphan documents. If a misc note has no inbound links, either delete it, link it from the relevant entity, or promote to a more specific category.
 

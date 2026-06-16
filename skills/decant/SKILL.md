@@ -3,7 +3,7 @@ name: decant
 description: Process a daily Obsidian note — extract learnings into the knowledgebase, update todo list, and add a summary. Use when the user asks to decant, process, or tidy up daily notes (files in the daily directory).
 ---
 
-The user may specify a date for the daily note. If no date is provided, use today's date.
+The user may specify a date for the daily note. If no date is provided — or they give a relative date like "yesterday" — resolve it from the shell with `date +%Y-%m-%d` (the sandbox is set to the user's NZ timezone). **Do not** use the context-provided date, which is UTC and can be a day behind the user's local date. "yesterday" = local today minus one.
 
 ## Procedure
 

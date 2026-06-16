@@ -6,6 +6,17 @@ The user always wants you to:
 - Treat questions like "should we X?" or "can we Y?" as requests for analysis, not authorisation. Wait for an explicit imperative ("do it", "apply", "go ahead") before making changes. I'm a Kiwi and often phrase proposals as open questions.
 - Ask questions via the `AskUserQuestion` tool (the multi-choice picker) rather than inline in chat — even when the natural answer is free-text written prose. Provide 2–4 plausible options; the user can always pick "Other" and type a free-form reply. Batch multiple questions into a single AskUserQuestion call.
 
+## Dates and timezone
+
+The user is in New Zealand (`Pacific/Auckland`, GMT+12/+13). The sandbox clock is
+set to this timezone, but the date injected into my context is computed in **UTC**
+and is therefore a day *behind* the user's local date for roughly half of every day
+(UTC 12:00–24:00 = NZ afternoon/evening onward).
+
+**Always resolve the current date from the shell — `date +%Y-%m-%d` — not from the
+context-provided date.** "today" = that value; "yesterday" = that value minus one.
+This matters most for date-driven skills like `/decant`.
+
 ## Network access and 403s
 
 The user typically runs Claude Code inside of a [Docker Sandbox](https://docs.docker.com/ai/sandboxes.md) with default deny egress controls. You will get an HTTP 403 if a hostname is not yet on the allow list. Ask the user to allow a host if this happens instead of just moving on.

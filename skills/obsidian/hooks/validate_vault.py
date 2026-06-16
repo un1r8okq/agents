@@ -197,6 +197,27 @@ def find_invalid_enum_values(vault: Path) -> list[tuple[Path, str, str]]:
     return found
 
 
+def find_invalid_source(vault: Path) -> list[tuple[Path, str]]:
+    """Return (path, reason) for notes whose optional `source:` is present but malformed.
+
+    Per SKILL.md "Source", `source:` must be a bare http(s) URL — not a wikilink
+    (a URL is not a vault entity) and not a bare vault path. Absent/empty source
+    is fine; the field is optional everywhere.
+    """
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        raw = _read_frontmatter(path).get("source", "")
+        if "[[" in raw:
+            found.append((path, "contains a wikilink — source must be a plain URL"))
+            continue
+        value = _strip_quotes(raw)
+        if not value:
+            continue
+        if not value.startswith(("http://", "https://")):
+            found.append((path, "not a URL — source must be a plain http(s) URL"))
+    return found
+
+
 def _daily_date(path: Path) -> date | None:
     """Parse a YYYY-MM-DD date from a daily-note filename stem, else None."""
     m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", path.stem)
@@ -393,13 +414,14 @@ def format_report(
     missing_desc: list[Path] = (),
     bad_keys: list[tuple[Path, list[str]]] = (),
     desc_links: list[Path] = (),
+    bad_sources: list[tuple[Path, str]] = (),
     missing_keys: list[tuple[Path, list[str]]] = (),
     bad_enums: list[tuple[Path, str, str]] = (),
     stale_people: list[str] = (),
     stale_context: list[tuple[str, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links or missing_keys or bad_enums or stale_people or stale_context):
+    if not (empty or dups or missing_desc or bad_keys or desc_links or bad_sources or missing_keys or bad_enums or stale_people or stale_context):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
@@ -421,6 +443,9 @@ def format_report(
     for p in desc_links:
         rel = p.relative_to(vault)
         lines.append(f"- Wikilink in description: {rel} — descriptions must be plain text (no [[...]]).")
+    for p, reason in bad_sources:
+        rel = p.relative_to(vault)
+        lines.append(f"- Invalid source: {rel} — {reason}.")
     for p, keys in missing_keys:
         rel = p.relative_to(vault)
         lines.append(
@@ -532,6 +557,7 @@ def main() -> int:
             missing_desc=_timed("find_missing_description", find_missing_description, vault),
             bad_keys=_timed("find_uppercase_frontmatter_keys", find_uppercase_frontmatter_keys, vault),
             desc_links=_timed("find_wikilinks_in_description", find_wikilinks_in_description, vault),
+            bad_sources=_timed("find_invalid_source", find_invalid_source, vault),
             missing_keys=_timed("find_missing_required_keys", find_missing_required_keys, vault),
             bad_enums=_timed("find_invalid_enum_values", find_invalid_enum_values, vault),
             stale_people=_timed("find_stale_person_notes", find_stale_person_notes, vault, today),

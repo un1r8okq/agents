@@ -500,6 +500,52 @@ def test_find_invalid_enum_values_ignores_absent_field(tmp_path):
     assert vv.find_invalid_enum_values(tmp_path) == []
 
 
+def test_find_invalid_source_flags_wikilink(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Wikilinked.md").write_text('---\nrelationship: client\ndescription: d\nsource: "[[ClearPoint]]"\n---\n')
+    found = dict(vv.find_invalid_source(tmp_path))
+    assert (tmp_path / "orgs" / "Wikilinked.md") in found
+    assert "wikilink" in found[tmp_path / "orgs" / "Wikilinked.md"]
+
+
+def test_find_invalid_source_flags_non_url(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "BadSource.md").write_text("---\nrole: x\ndescription: d\nsource: clearpoint.digital\n---\n")
+    found = dict(vv.find_invalid_source(tmp_path))
+    assert (tmp_path / "people" / "BadSource.md") in found
+    assert "URL" in found[tmp_path / "people" / "BadSource.md"]
+
+
+def test_find_invalid_source_accepts_plain_url(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Ok.md").write_text('---\nrelationship: employer\ndescription: d\nsource: "https://clearpoint.digital"\n---\n')
+    assert vv.find_invalid_source(tmp_path) == []
+
+
+def test_find_invalid_source_ignores_absent_or_empty(tmp_path):
+    (tmp_path / "people").mkdir()
+    (tmp_path / "people" / "NoSource.md").write_text("---\nrole: x\ndescription: d\n---\n")
+    (tmp_path / "people" / "EmptySource.md").write_text('---\nrole: x\ndescription: d\nsource: ""\n---\n')
+    assert vv.find_invalid_source(tmp_path) == []
+
+
+def test_format_report_includes_bad_sources(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    bad = tmp_path / "orgs" / "Bad.md"
+    bad.write_text('---\nrelationship: client\ndescription: d\nsource: "[[X]]"\n---\n')
+    report = vv.format_report([], [], tmp_path, bad_sources=[(bad, "contains a wikilink — source must be a plain URL")])
+    assert "Invalid source: orgs/Bad.md" in report
+    assert "plain URL" in report
+
+
+def test_hook_reports_invalid_source(tmp_path):
+    (tmp_path / "orgs").mkdir()
+    (tmp_path / "orgs" / "Bad.md").write_text('---\nrelationship: client\ndescription: d\nsource: "[[X]]"\n---\n')
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Invalid source: orgs/Bad.md" in r.stdout
+
+
 def test_format_report_includes_missing_keys_and_bad_enums(tmp_path):
     (tmp_path / "people").mkdir()
     (tmp_path / "orgs").mkdir()

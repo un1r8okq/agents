@@ -78,6 +78,7 @@ Apply the relevant section before any non-trivial write. These are the authorita
 - All keys **lowercase**.
 - After meaningful edits (~10% body added or restructured, new heading, material new claims), reconsider whether `description:` still represents the file. Propose updated description before writing. Skip for trivial edits.
 - For person notes, prefer the `refresh-person` skill — it handles `# Summary` and `# Stated views` together and updates `description:` coherently.
+- **Experimental fields.** Ad-hoc keys may occasionally be trialled (especially on daily notes). They are not conventions, may disappear, and shouldn't be propagated to other notes or relied on by tooling.
 
 **`source:` (optional, any entity note).** A bare URL pointing at the canonical, durable home of the real-world asset the note describes — not a search result. Quote-wrapped plain URL, **not** a wikilink (a URL is not a vault entity): `source: "https://clearpoint.digital"`. By type:
 - `people/` → LinkedIn profile URL (the canonical identity)
@@ -92,7 +93,7 @@ Omit where there is no single canonical asset (daily notes, detail notes — the
 
 | Directory | Required | Optional |
 | --- | --- | --- |
-| `daily/` | (none) | (none) — daily notes carry no frontmatter; an optional `location: office \| client` may be added by hand to surface a Location column in `## Schedule` |
+| `daily/` | (none) | (none stable) — daily notes carry no conventional frontmatter; ad-hoc experimental keys may appear (see "Experimental fields" above) |
 | `daily/detail/` | `description:` | |
 | `engagements/<Engagement>/<Engagement>.md` | `client:`, `description:`, `status:` (`active` \| `complete`) | `source:` |
 | `engagements/<Engagement>/{context,timeline,decisions,people}.md` | `description:` | |
@@ -146,7 +147,7 @@ Files in `people/<Name>.md`. One per person Will works with.
 
 **Required frontmatter:** `organisation:` (wikilinked), `role:`, `description:`.
 
-**Optional frontmatter:** `joined:`, `aliases:`, `mistranscriptions:`, `source:` (LinkedIn profile URL — see Frontmatter § `source:`).
+**Optional frontmatter:** `joined:`, `aliases:`, `mistranscriptions:`, `source:` (LinkedIn profile URL — see Frontmatter § `source:`). `aliases:` are legitimate short forms (for wikilink resolution); `mistranscriptions:` are known name garblings from meeting-transcription tools. Note: the `transcript` skill resolves names from the central `meta/transcript-data.md` table + an `aliases:` grep — it does **not** read the per-person `mistranscriptions:` field, so that field is an annotation only.
 
 **Section structure:**
 
@@ -176,7 +177,7 @@ Genuinely new pattern *frames* (not just new instances) may warrant a named sub-
 
 Files in `daily/YYYY-MM-DD.md`.
 
-**Frontmatter:** none. Daily notes carry no frontmatter by default. The `update-daily-schedule.py` hook maintains the `## Schedule` table from Google Calendar regardless. An optional `location: office | client` may be added by hand to make the schedule table include a Location column; a missing or `home` location omits it.
+**Frontmatter:** none. Daily notes carry no frontmatter by default. The `update-daily-schedule.py` hook maintains the `## Schedule` table from Google Calendar regardless.
 
 **Template:**
 ```

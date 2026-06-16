@@ -271,7 +271,6 @@ def render_block(
     events: list[dict],
     linkify,
     entities: list[tuple[str, str]],
-    include_location: bool,
 ) -> str:
     if not events:
         return "## Schedule\n\n_No events today._\n"
@@ -281,20 +280,11 @@ def render_block(
         start = (ev.get("start_time") or "").strip()
         end = (ev.get("end_time") or "").strip()
         title = (ev.get("title") or "").strip()
-        location = (ev.get("location") or "").strip()
         time_part = f"{start} - {end}" if start and end else "all-day"
         att_text = resolve_attendees(ev.get("attendees", []), entities, linkify)
-        row = [time_part, cell(linkify(title))]
-        if include_location:
-            row.append(cell(location))
-        row.append(cell(att_text))
-        rows.append(tuple(row))
+        rows.append((time_part, cell(linkify(title)), cell(att_text)))
 
-    headers = ["Time", "Description"]
-    if include_location:
-        headers.append("Location")
-    headers.append("Invited")
-    headers = tuple(headers)
+    headers = ("Time", "Description", "Invited")
     widths = [len(h) for h in headers]
     for r in rows:
         for i, c in enumerate(r):
@@ -367,13 +357,7 @@ def main() -> int:
     entities = load_entities()
     linkify = build_wikilinker(entities)
     original = daily_path.read_text()
-    daily_fm = parse_frontmatter(original)
-    # Daily notes no longer carry frontmatter by default. Only show the Location
-    # column when a `location:` is explicitly set to something other than home
-    # (an opt-in override); a missing/empty location behaves like "home".
-    location = str(daily_fm.get("location", "")).strip().lower()
-    include_location = location not in ("", "home")
-    block = render_block(events, linkify, entities, include_location)
+    block = render_block(events, linkify, entities)
     updated = upsert_schedule(original, block)
 
     if updated != original:

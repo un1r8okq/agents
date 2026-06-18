@@ -2,7 +2,7 @@
 
 ## Input
 
-User says: "Read daily/transcripts/2026-05-18-paw-patrol-ops-standup-transcript.md, then add a short summary and analysis to daily/detail/2026-05-18-paw-patrol-ops-standup.md"
+User says: "Read daily/transcripts/2026-05/2026-05-18-paw-patrol-ops-standup-transcript.md, then add a short summary and analysis to daily/detail/2026-05/2026-05-18-paw-patrol-ops-standup.md"
 
 ## Step 2: Name-resolution table built
 
@@ -67,7 +67,7 @@ The 40-minute [[Foggy Bottom]] detour is the load-bearing risk — it degrades r
 
 ## Step 7: Report
 
-- Written: `daily/detail/2026-05-18-paw-patrol-ops-standup.md`
-- Appended bullet to `daily/2026-05-18.md`
+- Written: `daily/detail/2026-05/2026-05-18-paw-patrol-ops-standup.md`
+- Appended bullet to `daily/2026-05/2026-05-18.md`
 - Unresolved names: none
 - Known-mistranscription resolutions applied: "Marshal" → [[Marshall Porter]], "Sky" → [[Skye Flyer]]

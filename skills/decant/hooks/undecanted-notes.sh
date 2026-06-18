@@ -55,7 +55,8 @@ fi
 # --- Scan for in-window undecanted notes (glob excludes template.md by shape) ---
 found=()
 shopt -s nullglob
-for f in "$vault"/daily/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md; do
+for f in "$vault"/daily/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md \
+         "$vault"/daily/[0-9][0-9][0-9][0-9]-[0-9][0-9]/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md; do
   d="$(basename "$f" .md)"
   [[ "$d" < "$lower" ]] && continue   # older than the window
   [[ "$d" < "$today" ]] || continue   # today or future -> exclude

@@ -10,7 +10,7 @@ Activate the `obsidian` skill first to load vault conventions.
 The user provides one of:
 1. A **file name** (e.g. `AB CDE1 Marshall PoC Standup - 2026_05_18 09_30 NZST - Notes by Gemini.md`) to a transcript in `/mnt/c/Users/<username>/Downloads/`.
 2. A **file path** — may be an export with a raw name that needs normalising (see step 1).
-3. **Nothing specific** — the user just asks to "process the transcript(s)" or similar. In this case **auto-discover** unprocessed transcripts already sitting in `daily/transcripts/` (see step 1, auto-discovery).
+3. **Nothing specific** — the user just asks to "process the transcript(s)" or similar. In this case **auto-discover** unprocessed transcripts already sitting in `inbox/` (see step 1, auto-discovery).
 
 They may also provide:
 - A topic hint for the slug and summary.
@@ -35,21 +35,21 @@ A real transcript has continuous `**Name:**` speaker turns and usually a trailin
 
 #### Auto-discovery (when no file is named)
 
-If the user did not name a specific file, glob `$OBSIDIAN_VAULT/daily/transcripts/` for files **not** matching the conforming pattern `YYYY-MM-DD-*` (i.e. anything that doesn't start with a `\d{4}-\d{2}-\d{2}-` prefix). These are raw exports dropped in but not yet processed.
+If the user did not name a specific file, glob `$OBSIDIAN_VAULT/inbox/` for files **not** matching the conforming pattern `YYYY-MM-DD-*` (i.e. anything that doesn't start with a `\d{4}-\d{2}-\d{2}-` prefix). These are raw exports dropped in but not yet processed.
 
 - **One match:** treat it as the input file and proceed.
 - **Multiple matches:** list them to the user and process each through the full pipeline (separate detail note per transcript).
-- **No matches:** tell the user there are no unprocessed transcripts in `daily/transcripts/` and ask for a file name/path.
+- **No matches:** tell the user there are no unprocessed transcripts in `inbox/` and ask for a file name/path.
 
 Then normalise each discovered file exactly as a raw export below (resolve date, derive slug, rename in place).
 
-**If the file is already in `daily/transcripts/` with a conforming name:** read it. Extract the date from the filename.
+**If the file is already in `daily/transcripts/YYYY-MM/` with a conforming name:** read it. Extract the date from the filename.
 
 **If the file has a raw export name** (e.g. from Google Meet/Gemini): normalise it before processing.
 
 1. **Resolve the date** — see date resolution below.
 2. Match the meeting title against the recurring meetings table below. If matched, use the canonical slug. Otherwise derive a slug (kebab-case, max 6 words) from the title.
-3. Rename/move to `$OBSIDIAN_VAULT/daily/transcripts/YYYY-MM-DD-<slug>-transcript.md`.
+3. Rename/move to `$OBSIDIAN_VAULT/daily/transcripts/YYYY-MM/YYYY-MM-DD-<slug>-transcript.md`. Create the `YYYY-MM/` month folder if it does not exist. If the raw file came from `inbox/`, remove it after writing.
 
 #### Date resolution
 
@@ -60,7 +60,7 @@ Sources, in priority order:
 1. **User-provided date** — always wins if given.
 2. **Raw export filename** — Gemini exports embed `YYYY_MM_DD HH_MM TZ` (e.g. `2026_05_15 08_59 AEST`). Parse the datetime and convert to NZ time. For most business-hours meetings AEST (UTC+10) → NZ is same calendar day, but late-afternoon AEST can roll forward.
 3. **First line of transcript content** — Gemini exports put `Month DD, YYYY` (e.g. `May 17, 2026`) on line 1. This date is in the meeting organiser's timezone (usually AEST), not the user's. It may be one day behind the NZ date.
-4. **Cross-check the daily note** — if `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md` references the meeting in its `## Schedule`, that confirms the correct NZ date.
+4. **Cross-check the daily note** — if `$OBSIDIAN_VAULT/daily/YYYY-MM/YYYY-MM-DD.md` references the meeting in its `## Schedule`, that confirms the correct NZ date.
 
 If the resolved NZ date differs from the date in the transcript content (common for Australian-timezone meetings), use the NZ date for the filename without flagging — this is expected.
 
@@ -166,7 +166,7 @@ Read the transcript fully and draft three sections:
 
 ### 6. Write the detail note
 
-Path: `$OBSIDIAN_VAULT/daily/detail/YYYY-MM-DD-<slug>.md`
+Path: `$OBSIDIAN_VAULT/daily/detail/YYYY-MM/YYYY-MM-DD-<slug>.md`
 
 Derive `<slug>` from the transcript filename (strip date prefix and `-transcript` suffix).
 
@@ -213,7 +213,7 @@ Full transcript: [[YYYY-MM-DD-<slug>-transcript]]
 
 ### 7. Append bullet to daily note
 
-Target: `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md`. If it doesn't exist, create from `$OBSIDIAN_VAULT/daily/template.md`.
+Target: `$OBSIDIAN_VAULT/daily/YYYY-MM/YYYY-MM-DD.md` (month-nested). If it doesn't exist, create from `$OBSIDIAN_VAULT/daily/template.md` (the template stays at the `daily/` root).
 
 Append a bullet to `# Notes`. The bullet:
 - Frames through a consultant lens — capture the risk, decision, or dynamic, not the activity.

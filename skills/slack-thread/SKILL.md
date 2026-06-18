@@ -1,6 +1,6 @@
 ---
 name: slack-thread
-description: Extract a pasted Slack thread into a structured Obsidian table at $OBSIDIAN_VAULT/daily/detail/, and add a consultant-lens summary bullet to the daily note. Use when the user pastes Slack thread text and asks to extract, save, capture, transcribe, or format a Slack thread for their knowledgebase.
+description: Extract a pasted Slack thread into a structured Obsidian table at $OBSIDIAN_VAULT/daily/detail/YYYY-MM/, and add a consultant-lens summary bullet to the daily note. Use when the user pastes Slack thread text and asks to extract, save, capture, transcribe, or format a Slack thread for their knowledgebase.
 ---
 
 # slack-thread
@@ -78,7 +78,7 @@ Do **not**: expand abbreviations, fix typos, add words, inline image content, or
 
 Before writing anything, present to the user:
 
-- **Filename**: `daily/detail/YYYY-MM-DD-<slug>.md`. Slug: kebab-case, ≤ 6 words, derived from the topic. E.g. `pup-pup-boogie-demo-concerns`.
+- **Filename**: `daily/detail/YYYY-MM/YYYY-MM-DD-<slug>.md`. Slug: kebab-case, ≤ 6 words, derived from the topic. E.g. `pup-pup-boogie-demo-concerns`.
 - **H1**: `# <topic with wikilinks>`.
 - **Lead sentence**: `On [[YYYY-MM-DD]] I <verb> <subject> in the [[Adventure Bay]] Slack workspace<channel-suffix>:` where `<channel-suffix>` is ` in #<channel>` if known, else empty. Verb default: `discussed`. Use a more accurate verb if the thread is clearly a flag/question/decision (`flagged`, `asked`, `proposed`).
 - **Daily-note bullet** (draft) — see step 7 for the rule.
@@ -87,7 +87,7 @@ Wait for the user to confirm or amend before writing.
 
 ### 6. Write the detail file
 
-Path: `$OBSIDIAN_VAULT/daily/detail/YYYY-MM-DD-<slug>.md`.
+Path: `$OBSIDIAN_VAULT/daily/detail/YYYY-MM/YYYY-MM-DD-<slug>.md`.
 
 Format:
 
@@ -111,7 +111,7 @@ description: "<~12-word description, mirrors H1 — plain text, no [[wikilinks]]
 
 ### 7. Append a consultant-lens bullet to the daily note
 
-Target file: `$OBSIDIAN_VAULT/daily/YYYY-MM-DD.md`. If the file does not exist, create it from `$OBSIDIAN_VAULT/daily/template.md`.
+Target file: `$OBSIDIAN_VAULT/daily/YYYY-MM/YYYY-MM-DD.md` (month-nested). If the file does not exist, create it from `$OBSIDIAN_VAULT/daily/template.md` (the template stays at the `daily/` root).
 
 Append a bullet to the `# Notes` section (not `# Summary`). The bullet:
 

@@ -218,7 +218,7 @@ def find_invalid_source(vault: Path) -> list[tuple[Path, str]]:
         if not value:
             continue
         if not value.startswith(("http://", "https://")):
-            found.append((path, "not a URL — source must be a plain http(s) URL"))
+            found.append((path, "not a URL — source must be a plain http(s) URL; for local-only documents, omit source: and record provenance in the body"))
     return found
 
 

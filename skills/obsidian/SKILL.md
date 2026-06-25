@@ -86,7 +86,7 @@ Apply the relevant section before any non-trivial write. These are the authorita
 - `orgs/` → the org's primary website
 - `glossary/` → the authoritative spec/docs for the term or tool (e.g. DORA → `https://dora.dev`)
 - `engagements/<E>.md` → the project's canonical home (SOW, client workspace, or repo)
-- `misc/` → where the reference was distilled from
+- `misc/` → where the reference was distilled from (must be a URL; for local-only documents with no web home, omit `source:` and record provenance in the body instead)
 
 Omit where there is no single canonical asset (daily notes, detail notes — their provenance is the day itself). Keep frontmatter to the **one** source an agent should follow blindly; put any secondary pointer in the body.
 
@@ -162,17 +162,21 @@ Files in `people/<Name>.md`. One per person Will works with.
 **`# My notes` shape — durable portrait, not a tactical event journal:**
 
 1. **Durable opener** — short prose: role, key relationships, what they want, relevant dynamics.
-2. **`## Patterns`** — recurring behavioural/strategic observations. One short rule per bullet. Shape:
-   `- **<title>.** <one-sentence observation>. Source: [[YYYY-MM-DD]], [[YYYY-MM-DD]].`
-   When a new instance of an existing pattern surfaces, **extend the source line** rather than adding a new bullet.
+2. **`## Patterns`** — recurring behavioural/strategic observations, separating the **durable rule** from its **dated evidence**:
+   - Each pattern is a bullet: `- **<title>.** <one-sentence invariant — the durable behaviour, present tense, no dates, no narrative>.`
+   - Beneath it, an indented **instance log**, one sub-bullet per occurrence, chronological:
+     `    - [[YYYY-MM-DD]] — <≤~15-word clause naming only what is distinctive about this instance>.`
+     The full narrative for each instance lives **once**, in that date's `timeline.md` row / detail note — the link is the drill-down. The person note keeps only the distinctive clause (a short verbatim quote is fine when the quote *is* the signal).
+   - **A recurrence adds an instance-log sub-bullet, never a sibling pattern bullet.** Mint a new pattern bullet only when the *behaviour itself* is new.
+   - Do **not** carry cross-references between patterns (`[[Name#Patterns|…]]`) or "extend that source line" reminders — the structure encodes those relations (related patterns share a frame; recurrences share a pattern).
+   - **Group into frames** once the list is long enough to be hard to scan (~8+ patterns): cluster patterns under `### <behavioural frame>` sub-headings, named for the frame, not the date. A flat list is fine below that threshold. (`people/Sayantan Bhadra.md` is the canonical example of the framed shape.)
 3. **`## Engagement events`** — pointer list to detail notes / daily sections. One line each, no inline content.
 
 **What NOT to do:**
 - ❌ Add dated `## <Engagement> YYYY-MM-DD` sub-sections of tactical recap — that belongs in the detail note + engagement timeline.
 - ❌ Inline blow-by-blow meeting content in person notes.
-- ❌ Duplicate a pattern bullet for each new instance — extend the source line.
-
-Genuinely new pattern *frames* (not just new instances) may warrant a named sub-section under `## Patterns` — name it for the frame, not the date.
+- ❌ Duplicate a pattern bullet for each new instance — add an instance-log sub-bullet under the existing pattern instead.
+- ❌ Cram an instance's full narrative into the person note — it belongs in the dated `timeline.md` row / detail note; the person note keeps only the distinctive clause.
 
 ### Daily notes
 

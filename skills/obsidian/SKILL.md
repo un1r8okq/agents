@@ -169,7 +169,7 @@ Files in `people/<Name>.md`. One per person Will works with.
      The full narrative for each instance lives **once**, in that date's `timeline.md` row / detail note — the link is the drill-down. The person note keeps only the distinctive clause (a short verbatim quote is fine when the quote *is* the signal).
    - **A recurrence adds an instance-log sub-bullet, never a sibling pattern bullet.** Mint a new pattern bullet only when the *behaviour itself* is new.
    - Do **not** carry cross-references between patterns (`[[Name#Patterns|…]]`) or "extend that source line" reminders — the structure encodes those relations (related patterns share a frame; recurrences share a pattern).
-   - **Group into frames** once the list is long enough to be hard to scan (~8+ patterns): cluster patterns under `### <behavioural frame>` sub-headings, named for the frame, not the date. A flat list is fine below that threshold. (`people/Sayantan Bhadra.md` is the canonical example of the framed shape.)
+   - **Group into frames** once the list is long enough to be hard to scan (~8+ patterns): cluster patterns under `### <behavioural frame>` sub-headings, named for the frame, not the date. A flat list is fine below that threshold.
 3. **`## Engagement events`** — pointer list to detail notes / daily sections. One line each, no inline content.
 
 **What NOT to do:**

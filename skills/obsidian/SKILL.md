@@ -170,6 +170,7 @@ Files in `people/<Name>.md`. One per person Will works with.
    - **A recurrence adds an instance-log sub-bullet, never a sibling pattern bullet.** Mint a new pattern bullet only when the *behaviour itself* is new.
    - Do **not** carry cross-references between patterns (`[[Name#Patterns|…]]`) or "extend that source line" reminders — the structure encodes those relations (related patterns share a frame; recurrences share a pattern).
    - **Group into frames** once the list is long enough to be hard to scan (~8+ patterns): cluster patterns under `### <behavioural frame>` sub-headings, named for the frame, not the date. A flat list is fine below that threshold.
+   - **De-dupe against `# Stated views`.** A stated *position* lives in `# Stated views`; `## Patterns` captures the *behaviour*. Don't duplicate a position as a pattern bullet — it may appear as an *instance* of a behavioural pattern (e.g. inference-vs-harness as an instance of "collapses debates into the load-bearing reframe").
 3. **`## Engagement events`** — pointer list to detail notes / daily sections. One line each, no inline content.
 
 **What NOT to do:**

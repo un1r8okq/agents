@@ -18,14 +18,7 @@ Issue these reads in a single set of parallel tool calls:
 - `^description:` grep across each of `people/`, `orgs/`, `engagements/`, `glossary/` (one Grep call per directory; recursive so it picks up engagement-scoped glossary and companion files)
 - For each engagement directory referenced in the daily note (e.g. `[[DSO2]]`), read its `context.md` (e.g. `$OBSIDIAN_VAULT/engagements/DSO2/context.md`)
 
-If the daily note already contains a `# Summary`, it has been decanted — confirm with the user before proceeding.
-
-**Partially-decanted days.** No `# Summary` but referenced detail notes / entity edits / todo strikethroughs already exist (common when the transcript skill ran in-session). Proceed, but switch from full extraction to gap-filling:
-
-- **Verify every `See [[...]]` link in the daily note resolves** — in-session captures sometimes reference detail notes that were never created or were merged into another note. Repoint or create as appropriate (ask in Phase 3 if it's a judgement call).
-- **Check for duplicate bullets** — multiple in-day captures of the same event leave near-duplicate bullets with slightly different framings (and sometimes contradictory attributions). Merging or correcting them is a Phase 3 question, not a silent fix.
-- **Diff against the knowledgebase, don't recreate** — check `timeline.md` for a missing dated row, person notes for missing `## Patterns` / `## Engagement events` entries, and `todo.md` for surfaced actions. Write only what's missing.
-- **Out-of-order decants:** if an engagement `context.md`'s *Last refreshed* date is **later** than the target note, don't recompute the full Phase 6 diff — make additive updates only, marked `([[YYYY-MM-DD]], decanted late)`, keep the newer refresh date, and don't demote/remove items the newer refresh already placed.
+If the daily note already contains a `# Summary`, it has been decanted — confirm with the user before proceeding. Otherwise the day has **not** been decanted — do the full extraction below. Detail notes and `See [[...]]` bullets from `/transcript` are normal un-decanted input, not a sign of prior processing.
 
 ### Phase 2: Plan (no tool calls)
 
@@ -54,6 +47,7 @@ Issue as one parallel batch:
     - Add a one-line pointer under `## Engagement events` linking to the detail note (or to the daily section if no detail note exists yet).
     - Do **NOT** create dated `## <Engagement> X YYYY-MM-DD` sub-sections of tactical recap — that content belongs in the detail note + engagement timeline. The same fact ending up in 4–5 person notes with slightly different framings is the failure mode this rule prevents.
     - **Group patterns into `### <frame>` sub-headings** once the note has ~8+ patterns (flat list fine below that); name frames for the behaviour, not the date.
+    - **De-dupe against `# Stated views`.** Don't write a stated *position* as a pattern bullet — positions live in `# Stated views`; `## Patterns` is for *behaviour*. A position may surface as an *instance* of a behavioural pattern, not a duplicate bullet.
   - **Engagement notes** are directory-shaped: dated rows append to `engagements/<Engagement>/timeline.md`, **not** the main `<Engagement>.md` file. Person notes do not carry timelines.
 - **Image moves** (one Bash `mv` per image).
 
@@ -81,6 +75,8 @@ For each engagement directory touched by today's daily note (i.e. any engagement
    - **`## Recently resolved`** — add decisions/items resolved today. Move stale items (older than ~1 week) **out** of context.md into `decisions.md` (resolved table) or `timeline.md` (narrative) as appropriate, so context.md stays current.
 3. **Update the `*Last refreshed:*` line** at the top to today's date.
 4. **Write the refreshed file.**
+
+**Late decants (out-of-order):** if `context.md`'s *Last refreshed* date is **later** than the target daily note (you're decanting an older note after a newer one already ran), don't recompute the full diff — make additive updates only, marked `([[YYYY-MM-DD]], decanted late)`, keep the newer refresh date, and don't demote/remove items the newer refresh already placed.
 
 If context.md doesn't exist yet for an engagement (i.e. the engagement is still in single-file shape at `engagements/<Engagement>.md`), skip context.md refresh — flag in Phase 7 instead as a candidate for directory promotion.
 

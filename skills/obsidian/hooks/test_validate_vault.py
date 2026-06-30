@@ -42,37 +42,67 @@ def test_find_empty_notes_ignores_nonempty_and_dotdirs(tmp_path):
     assert vault / ".obsidian" / "Empty In Dotdir.md" not in found
 
 
-def test_find_duplicate_basenames_flags_collision(tmp_path):
+def _two_engagements_with_context(vault: Path) -> None:
+    """Two engagements that each carry a companion context.md (convention-sanctioned
+    duplicate basenames) — the setup that makes a bare [[context]] ambiguous."""
+    (vault / "engagements" / "Agent OS").mkdir(parents=True)
+    (vault / "engagements" / "DSO2").mkdir(parents=True)
+    (vault / "engagements" / "Agent OS" / "context.md").write_text("ctx\n")
+    (vault / "engagements" / "DSO2" / "context.md").write_text("ctx\n")
+
+
+def test_find_ambiguous_wikilinks_flags_bare_link_to_dup(tmp_path):
     vault = _vault(tmp_path)
-    (vault / "engagements").mkdir()
-    (vault / "engagements" / "Dup.md").write_text("stub\n")
-    (vault / "misc" / "Dup.md").write_text("rich\n")
-    dups = vv.find_duplicate_basenames(vault)
-    names = [name for name, _ in dups]
-    assert names == ["Dup.md"]
-    paths = dict(dups)["Dup.md"]
-    assert (vault / "engagements" / "Dup.md") in paths
-    assert (vault / "misc" / "Dup.md") in paths
+    _two_engagements_with_context(vault)
+    (vault / "misc" / "Ref.md").write_text("see [[context]] for priorities\n")
+    found = vv.find_ambiguous_wikilinks(vault)
+    assert [(p.name, t) for p, t, _ in found] == [("Ref.md", "context")]
+    candidates = found[0][2]
+    assert len(candidates) == 2
+    assert all(c.name == "context.md" for c in candidates)
 
 
-def test_find_duplicate_basenames_ignores_unique(tmp_path):
-    vault = _vault(tmp_path)  # _vault basenames ("Real Person.md", "A Note.md") are all unique
-    assert vv.find_duplicate_basenames(vault) == []
-
-
-def test_find_duplicate_basenames_ignores_dotdirs(tmp_path):
+def test_find_ambiguous_wikilinks_ignores_path_qualified(tmp_path):
     vault = _vault(tmp_path)
+    _two_engagements_with_context(vault)
+    # already disambiguated with a path prefix -> not flagged
+    (vault / "misc" / "Ref.md").write_text("see [[DSO2/context|context]] for priorities\n")
+    assert vv.find_ambiguous_wikilinks(vault) == []
+
+
+def test_find_ambiguous_wikilinks_ignores_unique_stem(tmp_path):
+    vault = _vault(tmp_path)
+    # [[Real Person]] is a unique stem -> a bare link to it is unambiguous
+    (vault / "misc" / "Ref.md").write_text("met [[Real Person]] today\n")
+    assert vv.find_ambiguous_wikilinks(vault) == []
+
+
+def test_find_ambiguous_wikilinks_companion_dups_without_bare_link_ok(tmp_path):
+    # Duplicate companion basenames are convention-sanctioned: with no BARE link
+    # pointing at the shared name, there is no nondeterministic resolution -> silent.
+    vault = _vault(tmp_path)
+    for eng in ("Agent OS", "DSO2"):
+        (vault / "engagements" / eng).mkdir(parents=True)
+        for comp in ("context", "timeline", "decisions", "people"):
+            (vault / "engagements" / eng / f"{comp}.md").write_text("body\n")
+    (vault / "engagements" / "DSO2" / "DSO2.md").write_text("see [[DSO2/context|context]]\n")
+    assert vv.find_ambiguous_wikilinks(vault) == []
+
+
+def test_find_ambiguous_wikilinks_dedupes_per_note(tmp_path):
+    vault = _vault(tmp_path)
+    _two_engagements_with_context(vault)
+    (vault / "misc" / "Ref.md").write_text("[[context]] then [[context]] then [[context]]\n")
+    found = [f for f in vv.find_ambiguous_wikilinks(vault) if f[0].name == "Ref.md"]
+    assert len(found) == 1
+
+
+def test_find_ambiguous_wikilinks_skips_dotdirs(tmp_path):
+    vault = _vault(tmp_path)
+    _two_engagements_with_context(vault)
     (vault / ".obsidian").mkdir()
-    (vault / ".obsidian" / "A Note.md").write_text("config copy\n")  # collides by name but is in a dot-dir
-    assert vv.find_duplicate_basenames(vault) == []
-
-
-def test_find_duplicate_basenames_ignores_readme(tmp_path):
-    vault = _vault(tmp_path)
-    (vault / "meta").mkdir()
-    (vault / "README.md").write_text("root readme\n")
-    (vault / "meta" / "README.md").write_text("meta readme\n")
-    assert vv.find_duplicate_basenames(vault) == []
+    (vault / ".obsidian" / "Cfg.md").write_text("[[context]] in a dot-dir, not scanned\n")
+    assert vv.find_ambiguous_wikilinks(vault) == []
 
 
 def test_read_cwd_parses_json(tmp_path):
@@ -129,11 +159,15 @@ def test_format_report_lists_findings(tmp_path):
     (tmp_path / "people").mkdir()
     empty = tmp_path / "people" / "Empty.md"
     empty.write_text("")
-    report = vv.format_report(
-        [empty], [("Dup.md", [tmp_path / "misc" / "Dup.md", tmp_path / "engagements" / "Dup.md"])], tmp_path
-    )
+    ambiguous = [(
+        tmp_path / "engagements" / "DSO2" / "DSO2.md",
+        "context",
+        [tmp_path / "engagements" / "Agent OS" / "context.md",
+         tmp_path / "engagements" / "DSO2" / "context.md"],
+    )]
+    report = vv.format_report([empty], ambiguous, tmp_path)
     assert "people/Empty.md" in report
-    assert 'Duplicate basename "Dup.md"' in report
+    assert "Ambiguous wikilink [[context]] in engagements/DSO2/DSO2.md" in report
     assert "do NOT auto-edit" in report
     assert "no content" in report
     assert "0 bytes" not in report
@@ -166,6 +200,17 @@ def test_hook_reports_findings_when_cwd_in_vault(tmp_path):
     assert r.returncode == 0
     assert "people/Empty.md" in r.stdout
     assert r.stderr == ""
+
+
+def test_hook_reports_ambiguous_wikilink(tmp_path):
+    for eng in ("Agent OS", "DSO2"):
+        (tmp_path / "engagements" / eng).mkdir(parents=True)
+        (tmp_path / "engagements" / eng / "context.md").write_text("---\ndescription: d\n---\nx\n")
+    (tmp_path / "misc").mkdir()
+    (tmp_path / "misc" / "Ref.md").write_text("---\ndescription: d\n---\nsee [[context]]\n")
+    r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
+    assert r.returncode == 0
+    assert "Ambiguous wikilink [[context]] in misc/Ref.md" in r.stdout
 
 
 def test_hook_silent_when_cwd_outside_scope(tmp_path):

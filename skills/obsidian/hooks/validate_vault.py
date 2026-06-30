@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SessionStart hook — validate vault integrity and nudge.
 
-Scans $OBSIDIAN_VAULT for integrity defects (empty notes, duplicate basenames)
+Scans $OBSIDIAN_VAULT for integrity defects (empty notes, ambiguous wikilinks)
 and prints a nudge to stdout (SessionStart stdout is injected as session
 context). Report-only: never edits the vault. Always exits 0.
 """
@@ -123,17 +123,34 @@ def find_empty_notes(vault: Path) -> list[Path]:
     return found
 
 
-def find_duplicate_basenames(vault: Path) -> list[tuple[str, list[Path]]]:
-    """Return (basename, paths) for .md basenames appearing in 2+ locations."""
-    by_name: dict[str, list[Path]] = defaultdict(list)
+def find_ambiguous_wikilinks(vault: Path) -> list[tuple[Path, str, list[Path]]]:
+    """Return (note, target, candidates) for bare wikilinks to an ambiguous basename.
+
+    A bare ``[[context]]`` resolves nondeterministically when 2+ notes share that
+    stem (e.g. each engagement's companion ``context.md``). This is the precise
+    defect behind duplicate basenames: duplicate companion files are sanctioned
+    by the convention, so a duplicate is only a problem when a *bare* link
+    actually points at the shared name. Path-qualified links (``[[DSO2/context]]``)
+    and links to a unique stem are fine and never flagged. Findings are
+    de-duplicated per (note, target), so one note linking ``[[context]]`` five
+    times yields a single finding.
+    """
+    by_stem: dict[str, list[Path]] = defaultdict(list)
     for path in _iter_notes(vault):
-        by_name[path.name].append(path)
-    dups = []
-    for name in sorted(by_name):
-        paths = sorted(by_name[name])
-        if len(paths) > 1:
-            dups.append((name, paths))
-    return dups
+        by_stem[path.stem].append(path)
+    found = []
+    for path in sorted(_iter_notes(vault)):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for target in sorted(_wikilink_targets(text)):
+            if "/" in target:
+                continue  # path-qualified — already disambiguated
+            candidates = by_stem.get(target, [])
+            if len(candidates) > 1:
+                found.append((path, target, sorted(candidates)))
+    return found
 
 
 def find_missing_description(vault: Path) -> list[Path]:
@@ -426,7 +443,7 @@ def in_scope(cwd: str, vault: Path, skills_repo: Path) -> bool:
 
 def format_report(
     empty: list[Path],
-    dups: list[tuple[str, list[Path]]],
+    ambiguous: list[tuple[Path, str, list[Path]]],
     vault: Path,
     *,
     missing_desc: list[Path] = (),
@@ -439,16 +456,18 @@ def format_report(
     stale_context: list[tuple[str, str, str]] = (),
 ) -> str:
     """Render findings as a nudge, or '' when there are none."""
-    if not (empty or dups or missing_desc or bad_keys or desc_links or bad_sources or missing_keys or bad_enums or stale_people or stale_context):
+    if not (empty or ambiguous or missing_desc or bad_keys or desc_links or bad_sources or missing_keys or bad_enums or stale_people or stale_context):
         return ""
     lines = ["Vault integrity issues found by validate-vault:"]
     for p in empty:
         rel = p.relative_to(vault)
         lines.append(f"- Empty note (no content): {rel} — a blank note is a dead wikilink target.")
-    for name, paths in dups:
-        dirs = ", ".join(sorted(str(p.relative_to(vault).parent) for p in paths))
+    for note, target, candidates in ambiguous:
+        rel = note.relative_to(vault)
+        cands = ", ".join(str(c.relative_to(vault)) for c in candidates)
         lines.append(
-            f'- Duplicate basename "{name}": {dirs} — wikilinks resolve nondeterministically.'
+            f"- Ambiguous wikilink [[{target}]] in {rel} — basename matches {len(candidates)} notes "
+            f"({cands}); disambiguate with a path-prefix wikilink, e.g. [[<dir>/{target}]]."
         )
     for p in missing_desc:
         rel = p.relative_to(vault)
@@ -570,7 +589,7 @@ def main() -> int:
         today = date.today()
         report = format_report(
             _timed("find_empty_notes", find_empty_notes, vault),
-            _timed("find_duplicate_basenames", find_duplicate_basenames, vault),
+            _timed("find_ambiguous_wikilinks", find_ambiguous_wikilinks, vault),
             vault,
             missing_desc=_timed("find_missing_description", find_missing_description, vault),
             bad_keys=_timed("find_uppercase_frontmatter_keys", find_uppercase_frontmatter_keys, vault),

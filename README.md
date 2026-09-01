@@ -45,7 +45,8 @@ A `SessionStart` hook runs `/c/dev/agents/scripts/update-daily-schedule.py`, whi
 
 `skills/obsidian/hooks/validate_vault.py` runs at session start and nudges about
 vault integrity defects (empty notes, duplicate basenames). Report-only — it never
-edits the vault, and always exits 0. Supersedes the old vault-root `validate.py`.
+edits the vault, and always exits 0. This is the *only* vault validator — the old
+vault-root `validate.py` it superseded was deleted 2026-08-28 (dead schema, never ran).
 
 Install: add to the `SessionStart` hooks in `~/.claude/settings.json`:
 

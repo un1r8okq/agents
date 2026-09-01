@@ -19,13 +19,15 @@ Edits the `# Summary` and `# Stated views` blocks and the `description:` frontma
 1. Read `$OBSIDIAN_VAULT/people/<Name>.md`. Capture: frontmatter, current `# Summary`, current `# Stated views` (if present), `# My notes`, `# From LinkedIn` (context only).
 2. Draft new content per "What goes where" below.
 3. Show the user a clear before/after diff for the `# Summary`, `# Stated views`, and `description:`. **Wait for explicit confirmation** ("apply", "go ahead", "yes"). Do not write yet.
-4. On confirmation, update the `description:` line and replace the affected blocks via `Edit`. Touch nothing else.
+4. On confirmation, update the `description:` line and replace the affected blocks via `Edit` — including the `*Summary refreshed: [[<today>]].*` marker as the first line of `# Summary`. Touch nothing else.
 
 ## What goes where
 
 The Summary answers **what do I need in my head before working with this person?** Stated views answers **what positions have they expressed that will shape how they react?** Working background usually beats current views in the Summary — views get their own block.
 
 ### `# Summary` — narrative, 3-4 dense sentences
+
+**Stamp the freshness marker.** The first line under the `# Summary` heading is `*Summary refreshed: [[YYYY-MM-DD]].*` — set it to **today's date** (resolve from the shell with `date +%Y-%m-%d`; the sandbox runs in NZ time). This marker is the authoritative signal the `validate-vault` hook reads to decide the meeting-prep view is current: **refreshing the Summary without stamping it leaves the person flagged as stale** (dated engagement refs alone no longer clear it). Add the line if absent; update the date if present.
 
 **Lead with working background:**
 - Position in the current work landscape (not job title alone)
@@ -67,6 +69,7 @@ For a fictional Skye (anonymised):
 
 ```markdown
 # Summary
+*Summary refreshed: [[2026-04-29]].*
 Platform product lead in [[Lookout Tower Foundations]] at [[Adventure Bay Co]]; sponsors [[Rocky]]'s tooling team. Prior history with [[Marshall]] (from [[Adventure Bay]]) and [[Chase]]. Currently working political ground for [[FDC]] / [[WDF]] — pulled [[Marshall]] aside at the 2026-04-29 meeting ("we don't want no part of this"). Carries a secondhand 70% delivery-uplift claim about [[PupTech]] worth verifying before it lands in any report.
 
 # Stated views
@@ -87,4 +90,5 @@ Full before/after at [references/example.md](references/example.md).
 - **Carry forward verification flags.** If `# My notes` flags a claim as needing verification, the Summary should signal it too.
 - **Stated views is optional.** Skip the section on thin profiles rather than writing filler.
 - **Keep `description:` coherent with the Summary.** Refresh it whenever the Summary changes materially; plain prose, no wikilinks, quote-wrapped.
+- **Always stamp `Summary refreshed:`** with today's date — it is what clears the `validate-vault` stale-person flag; a refresh that omits it leaves the person looking stale.
 - **Minimal `Edit` calls.** One per block (the `description:` is a separate frontmatter edit) — or a single combined call when blocks are contiguous.

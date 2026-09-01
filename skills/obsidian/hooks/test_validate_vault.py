@@ -747,34 +747,77 @@ def _make_daily(tmp_path, d, body):
 
 
 def test_find_stale_person_notes_flags_lagging_note(tmp_path):
+    # No marker -> falls back to the newest dated ref (06-04), which lags the 06-08 decant.
     _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-04]]\n")
-    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup with [[Gagan Dhaliwal|Gagan]]\n")
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
 
 
 def test_find_stale_person_notes_fresh_note_not_flagged(tmp_path):
     _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nupdated [[2026-06-08]]\n")
-    _make_daily(tmp_path, "2026-06-08", "standup with [[Gagan Dhaliwal|Gagan]]\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup with [[Gagan Dhaliwal|Gagan]]\n")
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
 
 
 def test_find_stale_person_notes_no_date_ref_skipped(tmp_path):
     _make_person(tmp_path, "Leon", "# Summary\nno dates in this note\n")
-    _make_daily(tmp_path, "2026-06-08", "chat with [[Leon]]\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nchat with [[Leon]]\n")
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
 
 
 def test_find_stale_person_notes_old_mention_outside_window(tmp_path):
     _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-01]]\n")
-    _make_daily(tmp_path, "2026-05-01", "old standup with [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, "2026-05-01", "# Summary\nold standup with [[Gagan Dhaliwal]]\n")
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
 
 
 def test_find_stale_person_notes_takes_latest_mention(tmp_path):
     _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-06]]\n")
-    _make_daily(tmp_path, "2026-06-05", "early [[Gagan Dhaliwal]]\n")
-    _make_daily(tmp_path, "2026-06-08", "later [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, "2026-06-05", "# Summary\nearly [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nlater [[Gagan Dhaliwal]]\n")
     # note date-ref is 06-06; if MAX mention (06-08) is used -> stale; if MIN (06-05) -> fresh
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
+
+
+def test_find_stale_person_notes_ignores_undecanted_daily(tmp_path):
+    # A daily with no `# Summary` heading has not been decanted; its mentions haven't been
+    # triaged into notes yet, so it must not drive person-staleness (the undecanted-daily
+    # reminder owns that). Mirrors find_stale_context's decanted-guard.
+    _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-06-04]]\n")
+    _make_daily(tmp_path, "2026-06-08", "raw notes with [[Gagan Dhaliwal|Gagan]] (no summary)\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_excludes_self_note(tmp_path):
+    # `[[me]]` is the vault owner's own note; you don't prep to meet yourself.
+    _make_person(tmp_path, "me", "# Summary\nseen [[2026-06-04]]\n")
+    _make_daily(tmp_path, "2026-06-08", "# Summary\ntoday [[me]] did things\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_summary_marker_clears(tmp_path):
+    # A `Summary refreshed:` marker (from refresh-person / decant) supersedes stale dated refs:
+    # the note was reviewed on 06-08 even though its newest engagement ref is old.
+    _make_person(
+        tmp_path,
+        "Gagan Dhaliwal",
+        "# Summary\n*Summary refreshed: [[2026-06-08]].*\nseen [[2026-04-01]]\n",
+    )
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup with [[Gagan Dhaliwal|Gagan]]\n")
+    assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == []
+
+
+def test_find_stale_person_notes_marker_is_authoritative_over_newer_date_ref(tmp_path):
+    # The `Summary refreshed:` marker is THE freshness signal — not the newest incidental
+    # date-link. Here a decant appended a 06-08 engagement-event ref but did NOT re-stamp the
+    # marker (still 06-04), so the prep Summary is genuinely behind and must flag, even though
+    # a newest-date-link heuristic would wrongly clear it.
+    _make_person(
+        tmp_path,
+        "Gagan Dhaliwal",
+        "# Summary\n*Summary refreshed: [[2026-06-04]].*\n\n## Engagement events\n- [[2026-06-08-standup]] raw event\n",
+    )
+    _make_daily(tmp_path, "2026-06-08", "# Summary\nstandup with [[Gagan Dhaliwal|Gagan]]\n")
     assert vv.find_stale_person_notes(tmp_path, date(2026, 6, 9)) == ["Gagan Dhaliwal"]
 
 
@@ -838,7 +881,7 @@ def test_format_report_empty_with_freshness_empty(tmp_path):
 
 def test_hook_reports_stale_person(tmp_path):
     _make_person(tmp_path, "Gagan Dhaliwal", "# Summary\nseen [[2026-04-04]]\n")
-    _make_daily(tmp_path, date.today().isoformat(), "standup with [[Gagan Dhaliwal]]\n")
+    _make_daily(tmp_path, date.today().isoformat(), "# Summary\nstandup with [[Gagan Dhaliwal]]\n")
     r = _run(f'{{"cwd": "{tmp_path}"}}', {"OBSIDIAN_VAULT": str(tmp_path)})
     assert r.returncode == 0
     assert "consider refresh-person: Gagan Dhaliwal" in r.stdout

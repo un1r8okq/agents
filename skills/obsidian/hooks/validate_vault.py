@@ -312,6 +312,26 @@ def _last_refreshed(text: str) -> date | None:
         return None
 
 
+def _summary_refreshed(text: str) -> date | None:
+    """Parse the date from a person note's `Summary refreshed: [[YYYY-MM-DD]]` marker, else None.
+
+    This marker is the authoritative freshness signal for a person note — stamped by the
+    refresh-person skill (when the Summary is regenerated) and by a decant (when the note is
+    substantively updated). It is deliberately distinct from `Last refreshed:` (context.md).
+    """
+    m = re.search(r"Summary refreshed:\s*\[?\[?(\d{4})-(\d{2})-(\d{2})", text, re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return date(int(m[1]), int(m[2]), int(m[3]))
+    except ValueError:
+        return None
+
+
+# Notes for the vault owner themselves (`[[me]]`) — never flagged for meeting-prep staleness.
+SELF_NOTE_STEMS = {"me"}
+
+
 def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[str]:
     """Return person stems discussed in a recent daily more recently than their newest dated entry.
 
@@ -322,7 +342,7 @@ def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[st
     people_dir = vault / "people"
     if not people_dir.is_dir():
         return []
-    stems = {p.stem for p in people_dir.glob("*.md")}
+    stems = {p.stem for p in people_dir.glob("*.md")} - SELF_NOTE_STEMS
     if not stems:
         return []
     latest_mention: dict[str, date] = {}
@@ -334,6 +354,11 @@ def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[st
             text = daily.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        # Only decanted dailies drive staleness. An undecanted daily's mentions haven't been
+        # triaged into notes yet (the undecanted-daily reminder owns that); flagging on them
+        # would fire on every passing name-drop in today's raw notes. Mirrors find_stale_context.
+        if not re.search(r"^# Summary", text, re.MULTILINE):
+            continue
         for target in _wikilink_targets(text):
             if target in stems and (target not in latest_mention or d > latest_mention[target]):
                 latest_mention[target] = d
@@ -343,8 +368,12 @@ def find_stale_person_notes(vault: Path, today: date, days: int = 14) -> list[st
             note_text = (people_dir / f"{person}.md").read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        note_date = _max_date_ref(note_text)
-        if note_date is not None and mention_date > note_date:
+        # The `Summary refreshed:` marker is authoritative; fall back to the newest dated ref
+        # only for notes not yet carrying a marker (graceful migration).
+        fresh = _summary_refreshed(note_text)
+        if fresh is None:
+            fresh = _max_date_ref(note_text)
+        if fresh is not None and mention_date > fresh:
             stale.append(person)
     return sorted(stale)
 
@@ -496,7 +525,7 @@ def format_report(
         shown = ", ".join(stale_people[:15])
         more = f" (+{len(stale_people) - 15} more)" if len(stale_people) > 15 else ""
         lines.append(
-            "- Stale person notes (discussed more recently than their newest dated entry) — "
+            "- Stale person notes (discussed in a decanted daily since their Summary was last refreshed) — "
             f"consider refresh-person: {shown}{more}."
         )
     for engagement, refreshed, trigger in stale_context:

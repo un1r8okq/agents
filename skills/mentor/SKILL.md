@@ -34,6 +34,16 @@ Even *"polish, not problem"* framings inherit the error — they imply there's a
 
 **24-hour rule applies in both directions.** If the user's felt experience is anxious *after* the mentor session but the meeting data was positive, the mentor framing was the trigger, not the meeting. That's an over-diagnosis to undo, not a deeper pattern to investigate.
 
+## Calibration: pitch communication advice for the room, not for California
+
+Advice on how the user should present themselves defaults to US norms — *"lead with your strongest claim"*, *"don't bury the lede"*. The user works in New Zealand with NZ clients and colleagues, where that register reads as self-promotion. Weight tall poppy as real context before flagging an answer as underselling.
+
+**But distinguish *understated* from *tentative*.** NZ rewards flat, adjective-free statement of fact; it gives no cover to hedged or uncertain phrasing. *"I thought I'd be a good fit"* reads as hoping. *"TypeScript's been the constant, which is why I'm here"* is equally un-boastful and certain.
+
+When a point is genuinely buried, the fix is **ordering** — load-bearing fact in the first clause, caveat after — not volume. Recommending more assertion is usually wrong; recommending a different sentence order is usually right.
+
+Applies to interview prep, client conversations, team updates, and self-assessment. See `## What works in coaching you` in `me.md`.
+
 ## Close
 
 Offer to update the knowledgebase if useful context emerged during the conversation.
